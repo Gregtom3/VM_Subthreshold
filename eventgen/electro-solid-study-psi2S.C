@@ -1,5 +1,5 @@
 #include "Lcore.h"
-
+#include "TTree.h"
 int CheckAcceptance(const TLorentzVector P, const double thmin, const double thmax){
   if (P.Theta() < thmin * M_PI / 180.0) return 0;
   if (P.Theta() > thmax * M_PI / 180.0) return 0;
@@ -20,7 +20,7 @@ int main(const int argc, const char * argv[]){
   }
 
   // Electron beam energy and luminosity
-  double Ebeam = 11.0;//GeV
+  double Ebeam = 12.0;//GeV
   double lumi = 1.2e37 * 1.0e-26 * pow(0.197327, 2);//GeV^2 s^-1 eN
   double time = 3600.0;//s
 
@@ -85,12 +85,28 @@ int main(const int argc, const char * argv[]){
   hPJpsisub1->SetDirectory(fsub1);
   hFermiPPJpsisub1->SetDirectory(fsub1);
 
+  // TTree Info
+  TFile * fall2 = new TFile("result-electro-psi2S/Dsolid.root", "RECREATE");
+  TTree * tree = new TTree("tree","");
+  tree->SetDirectory(fall2);
+
   TLorentzVector ki[2], kf[4], q;
   ki[0].SetXYZM(0, 0, Ebeam, PARTICLE::e.M());
   double weight = 0.0;
   //double acceptance = 0.0;
   double Mjpsi = 3.68609;
   int count = 0;
+  int is_sub = 0;
+  // Add TTree Branches
+  tree->Branch("eIn",&ki[0],"TLorentzVector");
+  tree->Branch("pIn",&ki[1],"TLorentzVector");
+  tree->Branch("eOut",&kf[0],"TLorentzVector");
+  tree->Branch("pOut",&kf[1],"TLorentzVector");
+  tree->Branch("ePlusOut",&kf[2],"TLorentzVector");
+  tree->Branch("eMinusOut",&kf[3],"TLorentzVector");
+  tree->Branch("weight",&weight,"Double");
+  tree->Branch("is_sub",&is_sub,"0 = Above, 1 = Below");
+  tree->Branch("Nsim",&Nsim,"Number of Total Simulations");
   for (Long64_t i = 0; i < Nsim; i++){
     if (i % (Nsim/10) == 0) cout << i/(Nsim/10)*10 << "%" << endl;
     
@@ -126,11 +142,22 @@ int main(const int argc, const char * argv[]){
 	  hPJpsisub1->Fill( (kf[2]+kf[3]).P(), weight);
 	  hFermiPPJpsisub1->Fill( ki[1].P(), (kf[2]+kf[3]).P(), weight);
 	}
+
+
+	// Filling in TTree
+	
+	is_sub = 0;
+	if (q.E() < Mjpsi + (Mjpsi * Mjpsi - q * q) / (2.0 * Mp)){
+	  is_sub = 1;
+	}
+
+	tree->Fill();
 	
       }
     }
   }
   cout << count << endl;
+  GENERATE::print_fail();
   //1
   hMJpsi1->Scale(lumi*time/Nsim);
   hMomentum1->Scale(lumi*time/Nsim);
@@ -157,7 +184,12 @@ int main(const int argc, const char * argv[]){
   hFermiPPJpsisub1->Scale(lumi*time/Nsim);
   fsub1->Write();
   fsub1->Close();
-  
+
+
+  //2
+  fall2->Write();
+  fall2->Close();
+
 
   return 0;
 }

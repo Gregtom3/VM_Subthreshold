@@ -1008,7 +1008,9 @@ namespace GENERATE{
 
   bool psi_2S = false;
   /* Bremsstrahlung photon */
- 
+
+  int fail = 0;
+  
   double Bremsstrahlung(const double * y, const double * par){//ds/dy approximate expression
     //E0: electron beam energy; k: photon energy
     if (y[0] < 0.01) {// Infrared cut
@@ -1036,6 +1038,11 @@ namespace GENERATE{
 
   int Set_psi_2S(){
     psi_2S = true;
+    return 0;
+  }
+
+  int print_fail(){ //debugger
+    std::cout << "The specific weight calculation has failed " << fail << " times." << std::endl;
     return 0;
   }
   /* Nucleon from a nuclear target */
@@ -1077,7 +1084,11 @@ namespace GENERATE{
       {
 	MJpsi = PARTICLE::Jpsi.RandomM();
       }
-    if (W < MJpsi + Mp) return 0;//below the threshold
+    if (W < MJpsi + Mp)
+      {
+	fail++;
+	return 0;//below the threshold
+      }
     double mass[2] = {MJpsi, Mp};
     GenPhase.SetDecay(Pout, 2, mass);
     GenPhase.Generate();//uniform generate in 4pi solid angle
@@ -1094,7 +1105,9 @@ namespace GENERATE{
     double cth = (sqrt(ki[0] * ki[0] + q * q) * sqrt(kf[0] * kf[0] + k * k) - ki[0] * kf[0]) / (q * k);
     double volume = 4.0 * M_PI;
     //  double weight = JPSIPomLQCD::dSigmaJpsi(W, cth) * volume;//ds/dOmega * volumn(4pi)
-    double weight = JPSIMODEL::dSigmaJpsi(x,t)*volume;
+    double Jac = 2.0 * k * q / (2.0 * M_PI);
+    double flux = sqrt(pow(ki[0] * ki[1], 2) - (ki[0] * ki[0]) * (ki[1] * ki[1])) / (Mp * ki[0].P());
+    double weight = JPSIMODEL::dSigmaJpsi(x,t) * Jac * flux * volume;
     return weight;//GeV^-2
   }
 
@@ -1137,7 +1150,10 @@ namespace GENERATE{
     kf[0].SetXYZM(Pe * sth * cos(phi), Pe * sth * sin(phi), Pe * cth, m);//e'
     kf[1] = ki[0] - kf[0];//virtual photon
     double W2 = (kf[1] + ki[1]) * (kf[1] + ki[1]);//W^2 = (P + q)^2
-    if (W2 < Mp * Mp) return 0;//below the lowest state
+    if (W2 < Mp * Mp)
+      {
+	return 0;//below the lowest state
+      }
     double Q2 = - kf[1] * kf[1];//Q^2 = -q^2
     double alpha_em = 1.0 / 137.0;
     double couple = 4.0 * M_PI * alpha_em;
