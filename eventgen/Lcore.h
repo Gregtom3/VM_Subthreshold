@@ -203,11 +203,34 @@ namespace JPSIMODEL{//Model of J/psi production
     return result * 1e-7 / pow(0.197327, 2);//ds/dt in unit GeV^-4
   }
 
+   double dSigmaJpsi_2S_2g(const double x, const double t){//Brodsky et al. PLB498 (2001) 23-28
+    double N2g = 7.5671e3;
+    double v = 1.0 / (16.0 * M_PI);
+    double R = 1.0;
+    double M = 3.0969;//GeV
+    double result = N2g * v * pow(1.0 - x, 2) * exp(1.13 * t) / pow(R * M, 2);//nb GeV^-2
+    return 0.16*result * 1e-7 / pow(0.197327, 2);//ds/dt in unit GeV^-4
+  }
+
+  double dSigmaJpsi_2S_23g(const double x, const double t){//Brodsky et al. PLB498 (2001) 23-28
+    double N2g = 6.499e3;
+    double N3g = 2.894e3;
+    double v = 1.0 / (16.0 * M_PI);
+    double R = 1.0;
+    double M = 3.0969;//GeV
+    double result = N2g * v * pow(1.0 - x, 2) * exp(1.13 * t) / (R * R * M * M) + N3g * v * exp(1.13 * t) / pow(R * M, 4);//nb GeV^-2
+    return 0.16*result * 1e-7 / pow(0.197327, 2);//ds/dt in unit GeV^-4
+  }
+
   int SetModel(const char * model = "2g"){
     if (strcmp(model, "2g") == 0)
       dSigmaJpsi = &dSigmaJpsi_2g;
     else if (strcmp(model, "23g") == 0)
       dSigmaJpsi = &dSigmaJpsi_23g;
+    else if(strcmp(model, "2S_2g") == 0)
+      dSigmaJpsi = &dSigmaJpsi_2S_2g;
+    else if(strcmp(model, "2S_23g") == 0)
+      dSigmaJpsi = &dSigmaJpsi_2S_23g;
     else {
       cout << "No matching model! Set to 2g model!" << endl;
       dSigmaJpsi = dSigmaJpsi_2g;
@@ -983,8 +1006,9 @@ namespace GENERATE{
   TF1 * TF_fMomentum;
   TF1 * TF_fEnergy;
 
+  bool psi_2S = false;
   /* Bremsstrahlung photon */
-  
+ 
   double Bremsstrahlung(const double * y, const double * par){//ds/dy approximate expression
     //E0: electron beam energy; k: photon energy
     if (y[0] < 0.01) {// Infrared cut
@@ -1010,6 +1034,10 @@ namespace GENERATE{
     return 0;
   }
 
+  int Set_psi_2S(){
+    psi_2S = true;
+    return 0;
+  }
   /* Nucleon from a nuclear target */
   
   double GetNucleon(TLorentzVector * P){
@@ -1040,7 +1068,15 @@ namespace GENERATE{
     //ki: gamma, N; kf: Jpsi, N'
     TLorentzVector Pout = ki[0] + ki[1];//Total
     double W = Pout.M();
-    double MJpsi = PARTICLE::Jpsi.RandomM();
+    double MJpsi = 0.0;
+    if(psi_2S==true)
+      {
+	MJpsi = PARTICLE::psi2S.RandomM();
+      }
+    else
+      {
+	MJpsi = PARTICLE::Jpsi.RandomM();
+      }
     if (W < MJpsi + Mp) return 0;//below the threshold
     double mass[2] = {MJpsi, Mp};
     GenPhase.SetDecay(Pout, 2, mass);
@@ -1057,7 +1093,8 @@ namespace GENERATE{
     double q = sqrt(pow(W * W - ki[0] * ki[0] - ki[1] * ki[1], 2) - 4.0 * (ki[0] * ki[0]) * (ki[1] * ki[1])) / (2.0 * W);//initial state c.m. momentum
     double cth = (sqrt(ki[0] * ki[0] + q * q) * sqrt(kf[0] * kf[0] + k * k) - ki[0] * kf[0]) / (q * k);
     double volume = 4.0 * M_PI;
-    double weight = JPSIPomLQCD::dSigmaJpsi(W, cth) * volume;//ds/dOmega * volumn(4pi)
+    //  double weight = JPSIPomLQCD::dSigmaJpsi(W, cth) * volume;//ds/dOmega * volumn(4pi)
+    double weight = JPSIMODEL::dSigmaJpsi(x,t)*volume;
     return weight;//GeV^-2
   }
 
@@ -1167,7 +1204,16 @@ namespace GENERATE{
     double R = pow(1.0 - Q2 / 2.164 / pow(Mj,2), 2.131) - 1.0;
     double r = epsilon * R / (1.0 + epsilon * R);
     double wth = 3.0 / 4.0 * (1.0 + r + (1.0 - 3.0 * r) * pow(cth,2));
-    double branch = 5.971e-2;//Branch ratio to e+e-
+    double branch = 0.0;
+    if(psi_2S==true)
+      {
+	branch = 7.73e-3;//Branch ratio to e+e- (Psi_2S)
+      }
+    else
+      {
+	branch = 5.971e-2;//Branch ratio to e+e- (J/Psi)
+      }
+    
     return weight * wth * branch;
   }
 
@@ -1190,8 +1236,6 @@ namespace GENERATE{
     double cth = (sqrt(ki[0] * ki[0] + q * q) * sqrt(kf[0] * kf[0] + k * k) - ki[0] * kf[0]) / (q * k);
     double flux = sqrt(pow(ki[0] * ki[1], 2) - (ki[0] * ki[0]) * (ki[1] * ki[1])) / (Mp * ki[0].P());
     double volume = 4.0 * M_PI;
-     double x = (2.0 * Mp * MJpsi + MJpsi * MJpsi) / (W * W - Mp * Mp);
-    double t = (ki[0] - kf[0]) * (ki[0] - kf[0]);
     double weight = PHIMODEL::dSigmaPhi(dW, cth) * flux * volume;//ds/dOmega * volume(4pi)
     return weight;//GeV^-2
   }

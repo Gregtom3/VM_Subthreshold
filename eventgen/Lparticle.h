@@ -211,6 +211,7 @@ namespace PARTICLE{
   // charmonium
   Lparticle etac(2.9834, 31.8e-3);
   Lparticle Jpsi(3.096900, 92.9e-6);
+  Lparticle psi2S(3.68609, 286.0e-6);
   /* Baryons */
   // light baryons
   Lparticle proton(0.938272081, 0);
