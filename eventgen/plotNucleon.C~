@@ -1,0 +1,48 @@
+#include "Lcore.h"
+
+int plotNucleon()
+{
+  // Set nuclear
+  NUCLEAR::SetNuclear("Au197");
+  GENERATE::TF_fMomentum = new TF1("fp",NUCLEAR::fMomentum,0.0,2.0,0);
+  GENERATE::TF_fMomentum->SetNpx(1000);
+
+
+  GENERATE::TF_fEnergy = new TF1("fe",NUCLEAR::fEnergy,0.0,55.0,0);
+  GENERATE::TF_fEnergy->SetNpx(1000);
+  
+  TLorentzVector ki[2];
+  ki[0].SetXYZM(0,0,11,0.000511); //not even sure if this is correct units
+
+  TCanvas *c_px = new TCanvas("c_px","c_px",800,600);
+  TCanvas *c_py = new TCanvas("c_py","c_py",800,600);
+  TCanvas *c_pz = new TCanvas("c_pz","c_pz",800,600);
+  TCanvas *c_p = new TCanvas("c_p","c_p",800,600);
+  TH1F *h_px = new TH1F("h_px",";Nucleon p_{x} (GeV^{2}); Weight",100,-1,1);
+  TH1F *h_py = new TH1F("h_py",";Nucleon p_{y} (GeV^{2}); Weight",100,-1,1);
+  TH1F *h_pz = new TH1F("h_pz",";Nucleon p_{z} (GeV^{2}); Weight",100,-1,1);
+  TH1F *h_p = new TH1F("h_p",";Nucleon p (GeV^{2}); Weight",100,-1,1);
+  double weight = 0.0;
+  for(int i = 0 ; i < 100000 ; i++)
+    {
+      weight = GENERATE::GetNucleon(&ki[1]);
+      h_px->Fill(ki[1].Px(),weight);
+      h_py->Fill(ki[1].Py(),weight);
+      h_pz->Fill(ki[1].Pz(),weight);
+      h_p->Fill(ki[1].P(),weight);
+      
+    }
+
+  c_px->cd();
+  h_px->Draw();
+
+  c_py->cd();
+  h_py->Draw();
+
+  c_pz->cd();
+  h_pz->Draw();
+
+  c_p->cd();
+  h_p->Draw();
+  return 0;
+}

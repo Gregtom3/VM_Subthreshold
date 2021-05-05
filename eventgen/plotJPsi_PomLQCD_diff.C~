@@ -1,0 +1,34 @@
+#include "Lcore.h"
+int plotJPsi_PomLQCD_diff()
+{
+  const int n = 100;
+  double x[n];
+  double y1[n];
+    double y2[n];
+      double y3[n];
+  double cth_min = -1;
+  double cth_max = 1;
+  double cth_step = (cth_max-cth_min)/n;
+  double W1 = 4.1;
+  double W2 = 4.5;
+  double W3 = 5;
+  JPSIPomLQCD::SetModel();
+  for(int i = 0 ; i < n ; i++)
+    {
+      x[i]=cth_min+i*cth_step;
+      y1[i]=JPSIPomLQCD::dSigmaJpsi(W1,x[i]);
+      y2[i]=JPSIPomLQCD::dSigmaJpsi(W2,x[i]);
+      y3[i]=JPSIPomLQCD::dSigmaJpsi(W3,x[i]);
+    }
+  
+  TGraph *gr1 = new TGraph(n,x,y1);
+  TGraph *gr2 = new TGraph(n,x,y2);
+  TGraph *gr3 = new TGraph(n,x,y3);
+  gr1->SetMarkerColor(kBlack);
+  gr2->SetMarkerColor(kBlue);
+  gr3->SetMarkerColor(kRed);
+  gr1->Draw("AC*");
+  gr2->Draw("C* same");
+  gr3->Draw("C* same");
+  return 0;
+}
