@@ -96,17 +96,24 @@ int main(const int argc, const char * argv[]){
   //double acceptance = 0.0;
   double Mjpsi = 3.68609;
   int count = 0;
-  int is_sub = 0;
+  int is_sub;
+
+  TLorentzVector *eIn = new TLorentzVector();
+  TLorentzVector *pIn = new TLorentzVector();
+  TLorentzVector *eOut = new TLorentzVector();
+  TLorentzVector *pOut = new TLorentzVector();
+  TLorentzVector *ePlusOut = new TLorentzVector();
+  TLorentzVector *eMinusOut = new TLorentzVector();
   // Add TTree Branches
-  tree->Branch("eIn",&ki[0],"TLorentzVector");
-  tree->Branch("pIn",&ki[1],"TLorentzVector");
-  tree->Branch("eOut",&kf[0],"TLorentzVector");
-  tree->Branch("pOut",&kf[1],"TLorentzVector");
-  tree->Branch("ePlusOut",&kf[2],"TLorentzVector");
-  tree->Branch("eMinusOut",&kf[3],"TLorentzVector");
-  tree->Branch("weight",&weight,"Double");
-  tree->Branch("is_sub",&is_sub,"0 = Above, 1 = Below");
-  tree->Branch("Nsim",&Nsim,"Number of Total Simulations");
+  tree->Branch("eIn","TLorentzVector",&eIn);
+  tree->Branch("pIn","TLorentzVector",&pIn);
+  tree->Branch("eOut","TLorentzVector",&eOut);
+  tree->Branch("pOut","TLorentzVector",&pOut);
+  tree->Branch("ePlusOut","TLorentzVector",&ePlusOut);
+  tree->Branch("eMinusOut","TLorentzVector",&eMinusOut);
+  tree->Branch("weight",&weight,"Double/D");
+  tree->Branch("is_sub",&is_sub,"Sub/I");
+  tree->Branch("Nsim",&Nsim,"Sims/I");
   for (Long64_t i = 0; i < Nsim; i++){
     if (i % (Nsim/10) == 0) cout << i/(Nsim/10)*10 << "%" << endl;
     
@@ -116,9 +123,14 @@ int main(const int argc, const char * argv[]){
     if (weight > 0.0){
       q = ki[0] - kf[0];
       //case 1
+      eIn=(TLorentzVector*)ki[0].Clone();
+      pIn=(TLorentzVector*)ki[1].Clone();
+      eOut=(TLorentzVector*)kf[0].Clone();
+      pOut=(TLorentzVector*)kf[1].Clone();
+      ePlusOut=(TLorentzVector*)kf[2].Clone();
+      eMinusOut=(TLorentzVector*)kf[3].Clone();
 
       if (CheckAcceptance(kf[0], 6.0, 22.0) * CheckAcceptance(kf[2], 6.0, 22.0) * CheckAcceptance(kf[3], 6.0, 22.0)){
-	count++;
 	hMJpsi1->Fill( (kf[2]+kf[3]).M(), weight);
 	hMomentum1->Fill( kf[2].P(), kf[3].P(), weight);
 	hThetaPelectron1->Fill( kf[3].Theta()/M_PI*180, kf[3].P(), weight);
@@ -142,18 +154,18 @@ int main(const int argc, const char * argv[]){
 	  hPJpsisub1->Fill( (kf[2]+kf[3]).P(), weight);
 	  hFermiPPJpsisub1->Fill( ki[1].P(), (kf[2]+kf[3]).P(), weight);
 	}
-
-
-	// Filling in TTree
-	
-	is_sub = 0;
-	if (q.E() < Mjpsi + (Mjpsi * Mjpsi - q * q) / (2.0 * Mp)){
-	  is_sub = 1;
-	}
-
-	tree->Fill();
-	
       }
+
+      // Filling in TTree
+	
+      is_sub = 0;
+      if (q.E() < Mjpsi + (Mjpsi * Mjpsi - q * q) / (2.0 * Mp)){
+	count++;
+	is_sub = 1;
+      }
+      
+      tree->Fill();
+      
     }
   }
   cout << count << endl;
