@@ -6,7 +6,12 @@ int CheckAcceptance(const TLorentzVector P, const double thmin, const double thm
   if (P.P() < 0.3) return 0;
   return 1;
 }
-
+double CalcEg(const TLorentzVector P){
+  double Md = 1.8756;
+  double Mn = 0.93957;
+  double Eg = (pow(P.E() - Md, 2) - pow(P.P(), 2) - Mn * Mn) / (2.0 * (P.E() - P.Pz() - Md));
+  return Eg;
+}
 int main(const int argc, const char * argv[]){
 
   // Set simulation
@@ -20,7 +25,7 @@ int main(const int argc, const char * argv[]){
   }
 
   // Electron beam energy and luminosity
-  double Ebeam = 12.0;//GeV
+  double Ebeam = 15.0;//GeV
   double lumi = 1.2e37 * 1.0e-26 * pow(0.197327, 2);//GeV^2 s^-1 eN
   double time = 3600.0;//s
 
@@ -97,11 +102,15 @@ int main(const int argc, const char * argv[]){
   ki[0].SetXYZM(0, 0, Ebeam, PARTICLE::e.M());
   double weight = 0.0;
   double weight_smear = 0.0;
+  double weight_smear2 = 0.0; //will include lumi, time, nsim
   //double acceptance = 0.0;
   double Mjpsi = 3.68609;
   int count = 0;
   int is_sub;
 
+  double Eg=0.0;
+  double Eg_smear=0.0;
+  
   TLorentzVector *eIn = new TLorentzVector();
   TLorentzVector *pIn = new TLorentzVector();
   TLorentzVector *eOut = new TLorentzVector();
@@ -130,6 +139,9 @@ int main(const int argc, const char * argv[]){
   tree->Branch("eMinusOutSmear","TLorentzVector",&eMinusOutSmear);
   tree->Branch("weight",&weight,"Double/D");
   tree->Branch("weight_smear",&weight_smear,"Double/D");
+  tree->Branch("weight_smear2",&weight_smear2,"Double/D");
+  tree->Branch("Eg",&Eg,"Double/D");
+  tree->Branch("Eg_smear",&Eg_smear,"Double/D");
   tree->Branch("is_sub",&is_sub,"Sub/I");
   tree->Branch("Nsim",&Nsim,"Sims/I");
   for (Long64_t i = 0; i < Nsim; i++){
@@ -191,8 +203,10 @@ int main(const int argc, const char * argv[]){
 	is_sub = 1;
       }
 
+      Eg = CalcEg(kf[2]+kf[3]+kf[1]);
       weight_smear = weight*DETECTOR::SmearSoLID(_eOutSmear, "e-")*DETECTOR::SmearSoLID(_pOutSmear, "p")*DETECTOR::SmearSoLID(_ePlusOutSmear, "e+")*DETECTOR::SmearSoLID(_eMinusOutSmear, "e-");
-      
+      weight_smear2 = weight_smear*lumi*time/Nsim;
+      Eg_smear = CalcEg(_ePlusOutSmear+_eMinusOutSmear+_pOutSmear);
       
       tree->Fill();
       
