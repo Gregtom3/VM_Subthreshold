@@ -1164,6 +1164,8 @@ namespace GENERATE{
     double y = (ki[1] * kf[1]) / (ki[1] * ki[0]);
     double gy = ki[1].M() * sqrt(Q2) / (ki[1] * ki[0]);
     double epsilon = (1.0 - y - 0.24 * gy * gy) / (1.0 - y + 0.5 * y * y + 0.25 * gy * gy);
+    //    double epsilon2 = (1.0)/(1.0 + 2.0 * pow(abs(kf[1].P()),2) / Q2 * pow(tan(kf[0].Theta()/2),2));
+    //    cout << epsilon << " compared with " << epsilon2 << endl;
     return couple * flux * amp * phase * volume / (1.0 - epsilon);
   }
 

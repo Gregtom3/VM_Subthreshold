@@ -39,6 +39,9 @@ int main(const int argc, const char * argv[]){
   GENERATE::perange[0] = 0.3;//GeV
   GENERATE::perange[1] = 6.0;//GeV
 
+  // Set detector
+  DETECTOR::SetDetector("SoLID");
+  
   // detected 1
   TFile * fall1 = new TFile("result-electro-psi2S/Dsolid1.root", "RECREATE");
   TH1D * hMJpsi1 = new TH1D("Mass_ee_Psi2S", ";M[e^{+}e^{-}] (GeV);Events / hour", 100, 3.0, 4.0);
@@ -93,6 +96,7 @@ int main(const int argc, const char * argv[]){
   TLorentzVector ki[2], kf[4], q;
   ki[0].SetXYZM(0, 0, Ebeam, PARTICLE::e.M());
   double weight = 0.0;
+  double weight_smear = 0.0;
   //double acceptance = 0.0;
   double Mjpsi = 3.68609;
   int count = 0;
@@ -104,6 +108,15 @@ int main(const int argc, const char * argv[]){
   TLorentzVector *pOut = new TLorentzVector();
   TLorentzVector *ePlusOut = new TLorentzVector();
   TLorentzVector *eMinusOut = new TLorentzVector();
+  TLorentzVector _eOutSmear;
+  TLorentzVector _pOutSmear;
+  TLorentzVector _ePlusOutSmear;
+  TLorentzVector _eMinusOutSmear;
+  TLorentzVector *eOutSmear = new TLorentzVector();
+  TLorentzVector *pOutSmear = new TLorentzVector();
+  TLorentzVector *ePlusOutSmear = new TLorentzVector();
+  TLorentzVector *eMinusOutSmear = new TLorentzVector();
+
   // Add TTree Branches
   tree->Branch("eIn","TLorentzVector",&eIn);
   tree->Branch("pIn","TLorentzVector",&pIn);
@@ -111,7 +124,12 @@ int main(const int argc, const char * argv[]){
   tree->Branch("pOut","TLorentzVector",&pOut);
   tree->Branch("ePlusOut","TLorentzVector",&ePlusOut);
   tree->Branch("eMinusOut","TLorentzVector",&eMinusOut);
+  tree->Branch("eOutSmear","TLorentzVector",&eOutSmear);
+  tree->Branch("pOutSmear","TLorentzVector",&pOutSmear);
+  tree->Branch("ePlusOutSmear","TLorentzVector",&ePlusOutSmear);
+  tree->Branch("eMinusOutSmear","TLorentzVector",&eMinusOutSmear);
   tree->Branch("weight",&weight,"Double/D");
+  tree->Branch("weight_smear",&weight_smear,"Double/D");
   tree->Branch("is_sub",&is_sub,"Sub/I");
   tree->Branch("Nsim",&Nsim,"Sims/I");
   for (Long64_t i = 0; i < Nsim; i++){
@@ -129,6 +147,15 @@ int main(const int argc, const char * argv[]){
       pOut=(TLorentzVector*)kf[1].Clone();
       ePlusOut=(TLorentzVector*)kf[2].Clone();
       eMinusOut=(TLorentzVector*)kf[3].Clone();
+      _eOutSmear=kf[0];
+      _pOutSmear=kf[1];
+      _ePlusOutSmear=kf[2];
+      _eMinusOutSmear=kf[3];
+
+      eOutSmear=(TLorentzVector*)_eOutSmear.Clone();
+      pOutSmear=(TLorentzVector*)_pOutSmear.Clone();
+      ePlusOutSmear=(TLorentzVector*)_ePlusOutSmear.Clone();
+      eMinusOutSmear=(TLorentzVector*)_eMinusOutSmear.Clone();
 
       if (CheckAcceptance(kf[0], 6.0, 22.0) * CheckAcceptance(kf[2], 6.0, 22.0) * CheckAcceptance(kf[3], 6.0, 22.0)){
 	hMJpsi1->Fill( (kf[2]+kf[3]).M(), weight);
@@ -163,6 +190,9 @@ int main(const int argc, const char * argv[]){
 	count++;
 	is_sub = 1;
       }
+
+      weight_smear = weight*DETECTOR::SmearSoLID(_eOutSmear, "e-")*DETECTOR::SmearSoLID(_pOutSmear, "p")*DETECTOR::SmearSoLID(_ePlusOutSmear, "e+")*DETECTOR::SmearSoLID(_eMinusOutSmear, "e-");
+      
       
       tree->Fill();
       
