@@ -602,6 +602,7 @@ namespace GENERATE{
     double tran = (1.0 - y + 0.5 * y * y + M2 * Q2 / pow(s - M2, 2)) / (y * y + 4.0 * M2 * Q2 / pow(s - M2, 2));
     double phas = kf[0].P();
     double volume = 2.0 * M_PI * abs(perange[1] - perange[0]) * abs(cthrange[1] - cthrange[0]);
+    cout << "Virtual Photon Output = " << flux * coup * tran * phas * volume << endl;
     return flux * coup * tran * phas * volume;
   }
 
