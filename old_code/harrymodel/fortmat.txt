@@ -1,0 +1,15 @@
+
+     units:
+
+     k(GeV): J/Psi momentum
+
+     crst-ang (nb/GeV-sr.): d\sigma/dk/d\Omega
+
+     q (GeV): photon momentum
+
+     ang(degrees): angle ofoutgoing J/Psi with respectto incoming photon momentum q
+
+     -t(GeV^2 =-(q-k)**2,q and k are four-mometa
+
+     crst-t(nb/Gev**3):d\sigma/dk/dt
+
