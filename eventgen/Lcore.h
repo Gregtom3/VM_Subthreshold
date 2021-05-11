@@ -1137,6 +1137,7 @@ namespace GENERATE{
     double tran = (1.0 - y + 0.5 * y * y + M2 * Q2 / pow(s - M2, 2)) / (y * y + 4.0 * M2 * Q2 / pow(s - M2, 2));
     double phas = kf[0].P();
     double volume = 2.0 * M_PI * abs(perange[1] - perange[0]) * abs(cthrange[1] - cthrange[0]);
+    //    cout << "Virtual Photon Output (OLD) = " << flux * coup * tran * phas * volume << endl;
     return flux * coup * tran * phas * volume;
   }
 
@@ -1166,11 +1167,72 @@ namespace GENERATE{
     double epsilon = (1.0 - y - 0.24 * gy * gy) / (1.0 - y + 0.5 * y * y + 0.25 * gy * gy);
     //    double epsilon2 = (1.0)/(1.0 + 2.0 * pow(abs(kf[1].P()),2) / Q2 * pow(tan(kf[0].Theta()/2),2));
     //    cout << epsilon << " compared with " << epsilon2 << endl;
+    //    cout << "Virtual Photon Output = " << couple * flux * amp * phase * volume / (1.0 - epsilon) << endl;
     return couple * flux * amp * phase * volume / (1.0 - epsilon);
+  }
+
+
+
+  double VirtualPhoton_Compare(const TLorentzVector * ki, TLorentzVector * kf){
+    //ki: e, N; kf: e', gamma
+    double m = PARTICLE::e.M();
+    double Pe = random.Uniform(perange[0], perange[1]);
+    double cth = random.Uniform(cthrange[0], cthrange[1]);
+    double sth = sqrt(1.0 - cth * cth);
+    double phi = random.Uniform(-M_PI, M_PI);
+    if(true)
+      {
+	kf[0].SetXYZM(Pe * sth * cos(phi), Pe * sth * sin(phi), Pe * cth, m);//e'
+	kf[1] = ki[0] - kf[0];//virtual photon
+	double W2 = (kf[1] + ki[1]) * (kf[1] + ki[1]);//W^2 = (P + q)^2
+	if (W2 < Mp * Mp)
+	  {
+	    return 0;//below the lowest state
+	  }
+	double Q2 = - kf[1] * kf[1];//Q^2 = -q^2
+	double alpha_em = 1.0 / 137.0;
+	double couple = 4.0 * M_PI * alpha_em;
+	double flux = sqrt(pow(ki[1] * kf[1], 2) + Q2 * Mp * Mp) / sqrt(pow(ki[0] * ki[1], 2) - m * m * Mp * Mp);
+	double amp = (2.0 * Q2 - 4.0 * m * m) / (Q2 * Q2);
+	double phase = kf[0].P() * kf[0].P() / (2.0 * kf[0].E() * pow(2.0 * M_PI, 3));
+	double volume = 2.0 * M_PI * abs(perange[1] - perange[0]) * abs(cthrange[1] - cthrange[0]);
+	double y = (ki[1] * kf[1]) / (ki[1] * ki[0]);
+	double gy = ki[1].M() * sqrt(Q2) / (ki[1] * ki[0]);
+	double epsilon = (1.0 - y - 0.24 * gy * gy) / (1.0 - y + 0.5 * y * y + 0.25 * gy * gy);
+	//    double epsilon2 = (1.0)/(1.0 + 2.0 * pow(abs(kf[1].P()),2) / Q2 * pow(tan(kf[0].Theta()/2),2));
+	//    cout << epsilon << " compared with " << epsilon2 << endl;
+	cout << "Virtual Photon Output = " << couple * flux * amp * phase * volume / (1.0 - epsilon) << endl;
+      }
+    if(true)
+      {
+	//double m = PARTICLE::e.M();
+	kf[0].SetXYZT(Pe * sth * cos(phi), Pe * sth * sin(phi), Pe * cth, sqrt(m * m + Pe * Pe));//e'
+	kf[1] = ki[0] - kf[0];//photon  
+	double W2 = (kf[1] + ki[1]) * (kf[1] + ki[1]);
+	if (W2 < Mp * Mp) return 0;//below the lowest state
+	double Q2 = - kf[1] * kf[1];
+	if (Q2 < 1e-5) return 0;//small Q2 cut
+	double alpha_em = 1.0 / 137.0;
+	double s = (ki[0] + ki[1]) * (ki[0] + ki[1]);//(P + l)^2
+	if (s < W2) return 0;//energy conservation
+	double y = (ki[1] * kf[1]) / (ki[1] * ki[0]);//(P * q) / (P * l)
+	if (y < 0.0 || y > 1.0) return 0;//unphysical transfer
+	double M2 = ki[1] * ki[1];
+	double flux = sqrt(pow(W2 - M2 + Q2, 2) + 4.0 * M2 * Q2) / (s - M2);
+	double coup = alpha_em / (M_PI * M_PI * Q2);
+	double tran = (1.0 - y + 0.5 * y * y + M2 * Q2 / pow(s - M2, 2)) / (y * y + 4.0 * M2 * Q2 / pow(s - M2, 2));
+	double phas = kf[0].P();
+	double volume = 2.0 * M_PI * abs(perange[1] - perange[0]) * abs(cthrange[1] - cthrange[0]);
+	cout << "Virtual Photon Output (OLD) = " << flux * coup * tran * phas * volume << endl;
+
+      }
+    return 1;
+    //	return couple * flux * amp * phase * volume / (1.0 - epsilon);
   }
 
   double JpsiElectroproduction(const TLorentzVector * ki, TLorentzVector * kf){
     //ki: e, N; kf: e', Jpsi, N'
+    //    double weight1 = VirtualPhoton_Compare(ki, kf);//Generate scattered electron
     double weight1 = VirtualPhoton(ki, kf);//Generate scattered electron
     if (weight1 == 0) return 0;
     TLorentzVector ki2[2] = {kf[1], ki[1]};//Initial state: virtual photon N
@@ -1219,8 +1281,9 @@ namespace GENERATE{
     double Q2 = - (ki[0] - kf[0]) * (ki[0] - kf[0]);
     double gy = sqrt(Q2) / ki[0].E();
     double epsilon = (1.0 - y - 0.24 * gy * gy) / (1.0 - y + 0.5 * y * y + 0.25 * gy * gy);
-    double R = pow(1.0 - Q2 / 2.164 / pow(Mj,2), 2.131) - 1.0;
+    double R = pow(1.0 + Q2 / 2.164 / pow(Mj,2), 2.131) - 1.0;
     double r = epsilon * R / (1.0 + epsilon * R);
+    //    cout << "r = " << r << endl;
     double wth = 3.0 / 4.0 * (1.0 + r + (1.0 - 3.0 * r) * pow(cth,2));
     double branch = 0.0;
     if(psi_2S==true)
