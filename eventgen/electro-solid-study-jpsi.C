@@ -39,10 +39,10 @@ int main(const int argc, const char * argv[]){
 
   // Set scattered electron range
   double degtorad = M_PI / 180.0;
-  GENERATE::cthrange[0] = -1;
-  GENERATE::cthrange[1] = 1;
-  GENERATE::perange[0] = 0.0;//GeV
-  GENERATE::perange[1] = 10.0;//GeV
+  // GENERATE::cthrange[0] = -1;
+  // GENERATE::cthrange[1] = 1;
+  // GENERATE::perange[0] = 0.0;//GeV
+  // GENERATE::perange[1] = 3.0;//GeV
 
   // Set detector
   DETECTOR::SetDetector("SoLID");
