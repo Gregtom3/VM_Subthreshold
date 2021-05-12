@@ -1107,7 +1107,8 @@ namespace GENERATE{
     //  double weight = JPSIPomLQCD::dSigmaJpsi(W, cth) * volume;//ds/dOmega * volumn(4pi)
     double Jac = 2.0 * k * q / (2.0 * M_PI);
     double flux = sqrt(pow(ki[0] * ki[1], 2) - (ki[0] * ki[0]) * (ki[1] * ki[1])) / (Mp * ki[0].P());
-    double weight = JPSIMODEL::dSigmaJpsi(x,t) * Jac * flux * volume;
+    //   double weight = JPSIMODEL::dSigmaJpsi(x,t) * Jac * flux * volume;
+    double weight = JPSIMODEL::dSigmaJpsi(x,t) * Jac * volume;
     return weight;//GeV^-2
   }
 
