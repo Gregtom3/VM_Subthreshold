@@ -25,7 +25,7 @@ int main(const int argc, const char * argv[]){
   }
 
   // Electron beam energy and luminosity
-  double Ebeam = 8.5;//GeV
+  double Ebeam = 11.0;//GeV
   double lumi = 1.2e37 * 0.5 * 1.0e-26 * pow(0.197327, 2);//GeV^2 s^-1 eN
   double time = 3600.0;//s
 
@@ -33,22 +33,19 @@ int main(const int argc, const char * argv[]){
   NUCLEAR::SetNuclear("D");
   GENERATE::TF_fMomentum = new TF1("fp", NUCLEAR::fMomentum, 0.0, 1.0, 0);
   GENERATE::TF_fMomentum->SetNpx(1000);
-  //  GENERATE::Set_psi_2S();
+  GENERATE::Set_psi_2S();
   // Set Jpsi production model
-  JPSIMODEL::SetModel("23g");
-
-  // Set scattered electron range
-  double degtorad = M_PI / 180.0;
-  // GENERATE::cthrange[0] = -1;
-  // GENERATE::cthrange[1] = 1;
-  GENERATE::perange[0] = 0.0;//GeV
-  GENERATE::perange[1] = 0.7;//GeV
-
+  JPSIMODEL::SetModel("2S_23g");
+  GENERATE::SetBremsstrahlung();
+  double kmin = 9.5;
+  double kmax = Ebeam;
+  
+  
   // Set detector
   DETECTOR::SetDetector("SoLID");
   
   // detected 1
-  TFile * fall1 = new TFile("result-electro-jpsi/Dsolid1.root", "RECREATE");
+  TFile * fall1 = new TFile("result-photo-psi2S/Dsolid1.root", "RECREATE");
   TH1D * hMJpsi1 = new TH1D("Mass_ee_Psi2S", ";M[e^{+}e^{-}] (GeV);Events / hour", 100, 2.6, 3.6);
   TH2D * hMomentum1 = new TH2D("PePe_Psi2S", ";P[e^{+}] (GeV);P[e^{-}] (GeV)", 100, 0.0, 10.0, 100, 0.0, 10.0);
   TH2D * hThetaPelectron1 = new TH2D("ThetaP_eminus_Psi2S", ";#theta[e^{-}] (deg);P[e^{-}] (GeV)", 90, 0.0, 180.0, 100, 0.0, 10.0);
@@ -71,7 +68,7 @@ int main(const int argc, const char * argv[]){
   hFermiPPJpsi1->SetDirectory(fall1);
 
   // detected subthreshold 1
-  TFile * fsub1 = new TFile("result-electro-jpsi/Dsolidsub1.root", "RECREATE");
+  TFile * fsub1 = new TFile("result-photo-psi2S/Dsolidsub1.root", "RECREATE");
   TH1D * hMJpsisub1 = new TH1D("Mass_ee_Psi2S", ";M[e^{+}e^{-}] (GeV);Events / hour", 100, 3.0, 4.0);
   TH2D * hMomentumsub1 = new TH2D("PePe_Psi2S", ";P[e^{+}] (GeV);P[e^{-}] (GeV)", 100, 0.0, 10.0, 100, 0.0, 10.0);
   TH2D * hThetaPelectronsub1 = new TH2D("ThetaP_eminus_Psi2S", ";#theta[e^{-}] (deg);P[e^{-}] (GeV)", 90, 0.0, 180.0, 100, 0.0, 10.0);
@@ -94,7 +91,7 @@ int main(const int argc, const char * argv[]){
   hFermiPPJpsisub1->SetDirectory(fsub1);
 
   // TTree Info
-  TFile * fall2 = new TFile("result-electro-jpsi/Dsolid.root", "RECREATE");
+  TFile * fall2 = new TFile("result-photo-psi2S/Dsolid.root", "RECREATE");
   TTree * tree = new TTree("tree","");
   tree->SetDirectory(fall2);
 
@@ -104,7 +101,7 @@ int main(const int argc, const char * argv[]){
   double weight_smear = 0.0;
   double weight_smear2 = 0.0; //will include lumi, time, nsim
   //double acceptance = 0.0;
-  double Mjpsi = 3.097;
+  double Mjpsi = 3.686097;
   int count = 0;
   int is_sub;
 
@@ -113,15 +110,12 @@ int main(const int argc, const char * argv[]){
   
   TLorentzVector *eIn = new TLorentzVector();
   TLorentzVector *pIn = new TLorentzVector();
-  TLorentzVector *eOut = new TLorentzVector();
   TLorentzVector *pOut = new TLorentzVector();
   TLorentzVector *ePlusOut = new TLorentzVector();
   TLorentzVector *eMinusOut = new TLorentzVector();
-  TLorentzVector _eOutSmear;
   TLorentzVector _pOutSmear;
   TLorentzVector _ePlusOutSmear;
   TLorentzVector _eMinusOutSmear;
-  TLorentzVector *eOutSmear = new TLorentzVector();
   TLorentzVector *pOutSmear = new TLorentzVector();
   TLorentzVector *ePlusOutSmear = new TLorentzVector();
   TLorentzVector *eMinusOutSmear = new TLorentzVector();
@@ -131,11 +125,9 @@ int main(const int argc, const char * argv[]){
   // Add TTree Branches
   tree->Branch("eIn","TLorentzVector",&eIn);
   tree->Branch("pIn","TLorentzVector",&pIn);
-  tree->Branch("eOut","TLorentzVector",&eOut);
   tree->Branch("pOut","TLorentzVector",&pOut);
   tree->Branch("ePlusOut","TLorentzVector",&ePlusOut);
   tree->Branch("eMinusOut","TLorentzVector",&eMinusOut);
-  tree->Branch("eOutSmear","TLorentzVector",&eOutSmear);
   tree->Branch("pOutSmear","TLorentzVector",&pOutSmear);
   tree->Branch("ePlusOutSmear","TLorentzVector",&ePlusOutSmear);
   tree->Branch("eMinusOutSmear","TLorentzVector",&eMinusOutSmear);
@@ -150,31 +142,28 @@ int main(const int argc, const char * argv[]){
   tree->Branch("Nsim",&Nsim,"Sims/I");
   for (Long64_t i = 0; i < Nsim; i++){
     if (i % (Nsim/10) == 0) cout << i/(Nsim/10)*10 << "%" << endl;
-    
-    weight = GENERATE::GetNucleon(&ki[1]);
-    weight *= GENERATE::Event_eN2eNee_Jpsi(ki, kf); 
+
+    weight = GENERATE::BremsstrahlungPhoton(&ki[0], kmin, kmax, Ebeam) * 1.95 / 2; // 15cm LD2 target
+    weight *= GENERATE::GetNucleon(&ki[1]);
+    weight *= GENERATE::Event_gN2Nee_Jpsi(ki, kf); 
 
     if (weight > 0.0){
       count++;
-      q = ki[0] - kf[0];
       //case 1
       eIn=(TLorentzVector*)ki[0].Clone();
       pIn=(TLorentzVector*)ki[1].Clone();
-      eOut=(TLorentzVector*)kf[0].Clone();
-      pOut=(TLorentzVector*)kf[1].Clone();
-      ePlusOut=(TLorentzVector*)kf[2].Clone();
-      eMinusOut=(TLorentzVector*)kf[3].Clone();
-      _eOutSmear=kf[0];
-      _pOutSmear=kf[1];
-      _ePlusOutSmear=kf[2];
-      _eMinusOutSmear=kf[3];
+      pOut=(TLorentzVector*)kf[0].Clone();
+      ePlusOut=(TLorentzVector*)kf[1].Clone();
+      eMinusOut=(TLorentzVector*)kf[2].Clone();
+      _pOutSmear=kf[0];
+      _ePlusOutSmear=kf[1];
+      _eMinusOutSmear=kf[2];
 
-      eOutSmear=(TLorentzVector*)_eOutSmear.Clone();
       pOutSmear=(TLorentzVector*)_pOutSmear.Clone();
       ePlusOutSmear=(TLorentzVector*)_ePlusOutSmear.Clone();
       eMinusOutSmear=(TLorentzVector*)_eMinusOutSmear.Clone();
-
-      if (CheckAcceptance(kf[0], 6.0, 22.0) * CheckAcceptance(kf[2], 6.0, 22.0) * CheckAcceptance(kf[3], 6.0, 22.0)){
+      /*
+      if (CheckAcceptance(kf[1], 6.0, 22.0) * CheckAcceptance(kf[2], 6.0, 22.0) * CheckAcceptance(kf[3], 6.0, 22.0)){
 	hMJpsi1->Fill( (kf[2]+kf[3]).M(), weight);
 	hMomentum1->Fill( kf[2].P(), kf[3].P(), weight);
 	hThetaPelectron1->Fill( kf[3].Theta()/M_PI*180, kf[3].P(), weight);
@@ -186,35 +175,36 @@ int main(const int argc, const char * argv[]){
 	hPJpsi1->Fill( (kf[2]+kf[3]).P(), weight);
 	hFermiPPJpsi1->Fill( ki[1].P(), (kf[2]+kf[3]).P(), weight);
 	
-	if (q.E() < Mjpsi + (Mjpsi * Mjpsi - q * q) / (2.0 * Mp)){
-	  hMJpsisub1->Fill( (kf[2]+kf[3]).M(), weight);
-	  hMomentumsub1->Fill( kf[2].P(), kf[3].P(), weight);
-	  hThetaPelectronsub1->Fill( kf[3].Theta()/M_PI*180, kf[3].P(), weight);
-	  hThetaPpositronsub1->Fill( kf[2].Theta()/M_PI*180, kf[2].P(), weight);
-	  hThetaPprotonsub1->Fill( kf[1].Theta()/M_PI*180, kf[1].P(), weight);
-	  hAnglePsub1->Fill( kf[3].Angle(kf[2].Vect())/M_PI*180, kf[2].P(), weight);
-	  hFermiPsub1->Fill( ki[1].P(), weight);
-	  hFermiPzsub1->Fill( ki[1].Pz(), weight);
-	  hPJpsisub1->Fill( (kf[2]+kf[3]).P(), weight);
-	  hFermiPPJpsisub1->Fill( ki[1].P(), (kf[2]+kf[3]).P(), weight);
-	}
+	if (ki[0].E() < 8.2)
+	  {
+	    hMJpsisub1->Fill( (kf[2]+kf[3]).M(), weight);
+	    hMomentumsub1->Fill( kf[2].P(), kf[3].P(), weight);
+	    hThetaPelectronsub1->Fill( kf[3].Theta()/M_PI*180, kf[3].P(), weight);
+	    hThetaPpositronsub1->Fill( kf[2].Theta()/M_PI*180, kf[2].P(), weight);
+	    hThetaPprotonsub1->Fill( kf[1].Theta()/M_PI*180, kf[1].P(), weight);
+	    hAnglePsub1->Fill( kf[3].Angle(kf[2].Vect())/M_PI*180, kf[2].P(), weight);
+	    hFermiPsub1->Fill( ki[1].P(), weight);
+	    hFermiPzsub1->Fill( ki[1].Pz(), weight);
+	    hPJpsisub1->Fill( (kf[2]+kf[3]).P(), weight);
+	    hFermiPPJpsisub1->Fill( ki[1].P(), (kf[2]+kf[3]).P(), weight);
+	  }
       }
-
+      */
       // Filling in TTree
 
       // Calculate if the process was "subthreshold"
       is_sub = 0;
-      if (q.E() < Mjpsi + (Mjpsi * Mjpsi - q * q) / (2.0 * Mp)){
-	is_sub = 1;
-      }
-
+      if (ki[0].E() < 10.9267)
+	{
+	  is_sub = 1;
+	}
+      
      
       // Calculate unsmeared quantities
-      Eg = CalcEg(kf[2]+kf[3]+kf[1]);
-      vm=kf[2]+kf[3];
+      Eg = CalcEg(kf[0]+kf[1]+kf[2]);
+      vm=kf[1]+kf[2];
 
       // Calculate smeared quantities
-      DETECTOR::SmearSoLID(_eOutSmear, "e-"); // smear final state electron, but its detection is unimportant for event reco
 
       
       weight_smear = weight*DETECTOR::SmearSoLID(_pOutSmear, "p")*DETECTOR::SmearSoLID(_ePlusOutSmear, "e+")*DETECTOR::SmearSoLID(_eMinusOutSmear, "e-");

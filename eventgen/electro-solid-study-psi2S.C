@@ -25,8 +25,8 @@ int main(const int argc, const char * argv[]){
   }
 
   // Electron beam energy and luminosity
-  double Ebeam = 15.0;//GeV
-  double lumi = 1.2e37 * 1.0e-26 * pow(0.197327, 2);//GeV^2 s^-1 eN
+  double Ebeam = 11;//GeV
+  double lumi = 1.2e37 * 0.5 * 1.0e-26 * pow(0.197327, 2);//GeV^2 s^-1 eN
   double time = 3600.0;//s
 
   // Set nuclear
@@ -35,21 +35,21 @@ int main(const int argc, const char * argv[]){
   GENERATE::TF_fMomentum->SetNpx(1000);
   GENERATE::Set_psi_2S();
   // Set Jpsi production model
-  JPSIMODEL::SetModel("23g");
+  JPSIMODEL::SetModel("2S_23g");
 
   // Set scattered electron range
   double degtorad = M_PI / 180.0;
-  GENERATE::cthrange[0] = cos(29.0 * degtorad);
-  GENERATE::cthrange[1] = cos(6.0 * degtorad);
-  GENERATE::perange[0] = 0.3;//GeV
-  GENERATE::perange[1] = 6.0;//GeV
+  // GENERATE::cthrange[0] = -1;
+  // GENERATE::cthrange[1] = 1;
+  GENERATE::perange[0] = 0.0;//GeV
+  GENERATE::perange[1] = 1.0;//GeV
 
   // Set detector
   DETECTOR::SetDetector("SoLID");
   
   // detected 1
   TFile * fall1 = new TFile("result-electro-psi2S/Dsolid1.root", "RECREATE");
-  TH1D * hMJpsi1 = new TH1D("Mass_ee_Psi2S", ";M[e^{+}e^{-}] (GeV);Events / hour", 100, 3.0, 4.0);
+  TH1D * hMJpsi1 = new TH1D("Mass_ee_Psi2S", ";M[e^{+}e^{-}] (GeV);Events / hour", 100, 2.6, 3.6);
   TH2D * hMomentum1 = new TH2D("PePe_Psi2S", ";P[e^{+}] (GeV);P[e^{-}] (GeV)", 100, 0.0, 10.0, 100, 0.0, 10.0);
   TH2D * hThetaPelectron1 = new TH2D("ThetaP_eminus_Psi2S", ";#theta[e^{-}] (deg);P[e^{-}] (GeV)", 90, 0.0, 180.0, 100, 0.0, 10.0);
   TH2D * hThetaPpositron1 = new TH2D("ThetaP_eplus_Psi2S", ";#theta[e^{+}] (deg);P[e^{+}] (GeV)", 90, 0.0, 180.0, 100, 0.0, 10.0);
@@ -104,7 +104,7 @@ int main(const int argc, const char * argv[]){
   double weight_smear = 0.0;
   double weight_smear2 = 0.0; //will include lumi, time, nsim
   //double acceptance = 0.0;
-  double Mjpsi = 3.68609;
+  double Mjpsi = 3.686097;
   int count = 0;
   int is_sub;
 
@@ -125,7 +125,9 @@ int main(const int argc, const char * argv[]){
   TLorentzVector *pOutSmear = new TLorentzVector();
   TLorentzVector *ePlusOutSmear = new TLorentzVector();
   TLorentzVector *eMinusOutSmear = new TLorentzVector();
-
+  TLorentzVector vm;
+  TLorentzVector vmSmear;
+  
   // Add TTree Branches
   tree->Branch("eIn","TLorentzVector",&eIn);
   tree->Branch("pIn","TLorentzVector",&pIn);
@@ -137,6 +139,8 @@ int main(const int argc, const char * argv[]){
   tree->Branch("pOutSmear","TLorentzVector",&pOutSmear);
   tree->Branch("ePlusOutSmear","TLorentzVector",&ePlusOutSmear);
   tree->Branch("eMinusOutSmear","TLorentzVector",&eMinusOutSmear);
+  tree->Branch("vm","TLorentzVector",&vm);
+  tree->Branch("vmSmear","TLorentzVector",&vmSmear);
   tree->Branch("weight",&weight,"Double/D");
   tree->Branch("weight_smear",&weight_smear,"Double/D");
   tree->Branch("weight_smear2",&weight_smear2,"Double/D");
@@ -151,6 +155,7 @@ int main(const int argc, const char * argv[]){
     weight *= GENERATE::Event_eN2eNee_Jpsi(ki, kf); 
 
     if (weight > 0.0){
+      count++;
       q = ki[0] - kf[0];
       //case 1
       eIn=(TLorentzVector*)ki[0].Clone();
@@ -196,18 +201,28 @@ int main(const int argc, const char * argv[]){
       }
 
       // Filling in TTree
-	
+
+      // Calculate if the process was "subthreshold"
       is_sub = 0;
       if (q.E() < Mjpsi + (Mjpsi * Mjpsi - q * q) / (2.0 * Mp)){
-	count++;
 	is_sub = 1;
       }
 
+     
+      // Calculate unsmeared quantities
       Eg = CalcEg(kf[2]+kf[3]+kf[1]);
-      weight_smear = weight*DETECTOR::SmearSoLID(_eOutSmear, "e-")*DETECTOR::SmearSoLID(_pOutSmear, "p")*DETECTOR::SmearSoLID(_ePlusOutSmear, "e+")*DETECTOR::SmearSoLID(_eMinusOutSmear, "e-");
+      vm=kf[2]+kf[3];
+
+      // Calculate smeared quantities
+      DETECTOR::SmearSoLID(_eOutSmear, "e-"); // smear final state electron, but its detection is unimportant for event reco
+
+      
+      weight_smear = weight*DETECTOR::SmearSoLID(_pOutSmear, "p")*DETECTOR::SmearSoLID(_ePlusOutSmear, "e+")*DETECTOR::SmearSoLID(_eMinusOutSmear, "e-");
       weight_smear2 = weight_smear*lumi*time/Nsim;
       Eg_smear = CalcEg(_ePlusOutSmear+_eMinusOutSmear+_pOutSmear);
-      
+      vmSmear=_ePlusOutSmear+_eMinusOutSmear;
+
+
       tree->Fill();
       
     }

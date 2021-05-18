@@ -25,7 +25,7 @@ int main(const int argc, const char * argv[]){
   }
 
   // Electron beam energy and luminosity
-  double Ebeam = 12;//GeV
+  double Ebeam = 8.5;//GeV
   double lumi = 1.2e37 * 0.5 * 1.0e-26 * pow(0.197327, 2);//GeV^2 s^-1 eN
   double time = 3600.0;//s
 
@@ -35,7 +35,7 @@ int main(const int argc, const char * argv[]){
   GENERATE::TF_fMomentum->SetNpx(1000);
   //  GENERATE::Set_psi_2S();
   // Set Jpsi production model
-  JPSIMODEL::SetModel("2g");
+  JPSIMODEL::SetModel("23g");
   GENERATE::SetBremsstrahlung();
   double kmin = 7.2;
   double kmax = Ebeam;
