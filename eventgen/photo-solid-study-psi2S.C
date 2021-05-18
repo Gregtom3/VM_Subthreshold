@@ -17,15 +17,18 @@ int main(const int argc, const char * argv[]){
   // Set simulation
   gRandom->SetSeed(0);
   Long64_t Nsim = 10000;
-
-  if (argc > 1) Nsim = atoi(argv[1]);
+  double Ebeam = 11.0;//GeV
+  if (argc > 2){
+    Nsim = atoi(argv[1]);
+    Ebeam = atof(argv[2]);
+  }
   else {
-    cout << "./electro-solid-study <Nsim>" << endl;
+    cout << "./electro-solid-study <Nsim> <Ebeam>" << endl;
     return 0;
   }
 
   // Electron beam energy and luminosity
-  double Ebeam = 11.0;//GeV
+  
   double lumi = 1.2e37 * 0.5 * 1.0e-26 * pow(0.197327, 2);//GeV^2 s^-1 eN
   double time = 3600.0;//s
 
@@ -33,9 +36,8 @@ int main(const int argc, const char * argv[]){
   NUCLEAR::SetNuclear("D");
   GENERATE::TF_fMomentum = new TF1("fp", NUCLEAR::fMomentum, 0.0, 1.0, 0);
   GENERATE::TF_fMomentum->SetNpx(1000);
-  GENERATE::Set_psi_2S();
-  // Set Jpsi production model
-  JPSIMODEL::SetModel("2S_23g");
+  // Set Psi2S production model
+  PSI2SMODEL::SetModel("23g");
   GENERATE::SetBremsstrahlung();
   double kmin = 9.5;
   double kmax = Ebeam;
@@ -45,7 +47,7 @@ int main(const int argc, const char * argv[]){
   DETECTOR::SetDetector("SoLID");
  
   // TTree Info
-  TFile * fall2 = new TFile("result-photo-psi2S/Dsolid_photo.root", "RECREATE");
+  TFile * fall2 = new TFile(Form("result-photo-psi2S/Dsolid_photo_%.1fGeV.root",Ebeam), "RECREATE");
   TTree * tree = new TTree("tree","");
   tree->SetDirectory(fall2);
 
@@ -55,7 +57,7 @@ int main(const int argc, const char * argv[]){
   double weight_smear = 0.0;
   double weight_smear2 = 0.0; //will include lumi, time, nsim
   //double acceptance = 0.0;
-  double Mjpsi = 3.686097;
+  double Mpsi2S = 3.686097;
   int count = 0;
   int is_sub;
 
@@ -75,7 +77,7 @@ int main(const int argc, const char * argv[]){
   TLorentzVector *eMinusOutSmear = new TLorentzVector();
   TLorentzVector vm;
   TLorentzVector vmSmear;
-  
+  TLorentzVector gamma;  
   // Add TTree Branches
   tree->Branch("eIn","TLorentzVector",&eIn);
   tree->Branch("pIn","TLorentzVector",&pIn);
@@ -86,6 +88,7 @@ int main(const int argc, const char * argv[]){
   tree->Branch("ePlusOutSmear","TLorentzVector",&ePlusOutSmear);
   tree->Branch("eMinusOutSmear","TLorentzVector",&eMinusOutSmear);
   tree->Branch("vm","TLorentzVector",&vm);
+  tree->Branch("gamma","TLorentzVector",&gamma);
   tree->Branch("vmSmear","TLorentzVector",&vmSmear);
   tree->Branch("weight",&weight,"Double/D");
   tree->Branch("weight_smear",&weight_smear,"Double/D");
@@ -99,10 +102,11 @@ int main(const int argc, const char * argv[]){
 
     weight = GENERATE::BremsstrahlungPhoton(&ki[0], kmin, kmax, Ebeam) * 1.95 / 2; // 15cm LD2 target
     weight *= GENERATE::GetNucleon(&ki[1]);
-    weight *= GENERATE::Event_gN2Nee_Jpsi(ki, kf); 
+    weight *= GENERATE::Event_gN2Nee_Psi2S(ki, kf); 
 
     if (weight > 0.0){
       count++;
+      gamma = ki[0];
       //case 1
       eIn=(TLorentzVector*)ki[0].Clone();
       pIn=(TLorentzVector*)ki[1].Clone();
