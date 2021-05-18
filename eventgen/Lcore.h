@@ -1170,6 +1170,36 @@ namespace GENERATE{
   }
 
 
+  
+  double VirtualPhoton_new(const TLorentzVector * ki, TLorentzVector * kf){
+    //ki: e, N; kf: e', gamma
+    // NEED TO EDIT THIS
+    double m = PARTICLE::e.M();
+    double Pg = random.Uniform(pgrange[0], pgrange[1]);
+    double cth = random.Uniform(cthgrange[0], cthgrange[1]);
+    double sth = sqrt(1.0 - cth * cth);
+    double phi = random.Uniform(-M_PI, M_PI);
+    kf[0].SetXYZM(Pe * sth * cos(phi), Pe * sth * sin(phi), Pe * cth, m);//e'
+    kf[1] = ki[0] - kf[0];//virtual photon
+    double W2 = (kf[1] + ki[1]) * (kf[1] + ki[1]);//W^2 = (P + q)^2
+    if (W2 < Mp * Mp)
+      {
+	return 0;//below the lowest state
+      }
+    double Q2 = - kf[1] * kf[1];//Q^2 = -q^2
+    double alpha_em = 1.0 / 137.0;
+    double couple = 4.0 * M_PI * alpha_em;
+    double flux = sqrt(pow(ki[1] * kf[1], 2) + Q2 * Mp * Mp) / sqrt(pow(ki[0] * ki[1], 2) - m * m * Mp * Mp);
+    double amp = (2.0 * Q2 - 4.0 * m * m) / (Q2 * Q2);
+    double phase = kf[0].P() * kf[0].P() / (2.0 * kf[0].E() * pow(2.0 * M_PI, 3));
+    double volume = 2.0 * M_PI * abs(perange[1] - perange[0]) * abs(cthrange[1] - cthrange[0]);
+    double y = (ki[1] * kf[1]) / (ki[1] * ki[0]);
+    double gy = ki[1].M() * sqrt(Q2) / (ki[1] * ki[0]);
+    double epsilon = (1.0 - y - 0.25 * gy * gy) / (1.0 - y + 0.5 * y * y + 0.25 * gy * gy);
+    return couple * flux * amp * phase * volume / (1.0 - epsilon);
+  }
+
+
 
   double JpsiElectroproduction(const TLorentzVector * ki, TLorentzVector * kf){
     //ki: e, N; kf: e', Jpsi, N'
