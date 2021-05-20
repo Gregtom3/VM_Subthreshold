@@ -4,7 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-
+#include <gsl/gsl_integration.h>
 #include "TROOT.h"
 #include "TStyle.h"
 //#include "TSystem.h"
@@ -31,14 +31,16 @@
 #include "TH3D.h"
 #include "TH2F.h"
 #include "TH3F.h"
+#include "TF1.h"
 #include "TGraph.h"
 #include "TGraph2D.h"
+
 #include "TLegend.h"
 
 #include "Lparticle.h"
 
 using namespace std;
-
+using namespace ROOT;
 const double Mp = PARTICLE::proton.M();
 
 namespace COLLIDER{
@@ -195,10 +197,17 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
   const double b_inel = 3.53;
   const double a_inel = 1.2;
 
-  const double epsilon = 0.00001;
-  const double numax = 100000.0; // maximum bound for infinite integration 
+  const double epsilon = 0.0001;
+  const double numax = 2000000.0; // maximum bound for infinite integration 
 
-  TF1 *f1 = 0;
+  TFile *_fmodel = 0;
+  TF1 *_f1 = 0;
+  TGraph *_g = 0; // Data points of Slope B vs. W taken for T0=20.5 (see paper)
+                 // Data points generated from webplotdigitizer
+  
+  // gsl workspace for integration of Dispersion integral
+  gsl_integration_workspace * w = gsl_integration_workspace_alloc(1000);
+  gsl_function F;
   
   double ImaginaryT(const double s){
     double nu = 0.5*(s-Mp*Mp-Mv*Mv);
@@ -225,8 +234,10 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
   double RealT(const double s){
     double nu = 0.5*(s-Mp*Mp-Mv*Mv);
     double T0 = 20.5; // Can be set to 0, 20.5, or 87, see paper for details
-    f1->SetParameters(nu, 0.0);
-    double integral = f1->Integral(nu_el,nu-epsilon)+f1->Integral(nu+epsilon,numax);
+    _f1->SetParameters(nu, 0.0);
+    double e1 = 0.0;
+    double e2 = 0.0;
+    double integral = _f1->Integral(nu_el,nu-epsilon)+_f1->Integral(nu+epsilon,TMath::Infinity());
     return T0 + 2.0/M_PI * nu*nu * integral; 
   }
 
@@ -241,14 +252,17 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
     double coeff = pow(e*f/Mv,2)/(64.0*M_PI*s*qgp*qgp);
     double ReT = RealT(s);
     double ImT = ImaginaryT(s);
-    return coeff * (ReT*ReT + ImT*ImT);
+    double B = _g->Eval(W);
+    return coeff * (ReT*ReT + ImT*ImT) * exp(B*t);
   }
 
   int SetModel(const char * model = "v1"){
     if (strcmp(model, "v1") == 0)
       {
 	dSigmaY1S = &dSigmaY1S_v1;
-	f1 = new TF1("func", dispersion_integral, nu_el, numax, 1);
+	_f1 = new TF1("func", dispersion_integral, nu_el, numax, 1);
+	_fmodel = new TFile("upsilon-model/upsilon_1S_B.root","READ");
+	_g = (TGraph*)_fmodel->Get("T0_20.5");
       }
     else {
       cout << "No matching model! Set to v1 model!" << endl;
@@ -329,10 +343,6 @@ namespace JPSIMODEL{//Model of J/psi production
     return 0;
   }
 }
-
-
-
-
 namespace JPSIPomLQCD{//Pomeron-LQCD model of J/psi production from the proton
 
   double cth[142];
@@ -391,7 +401,7 @@ namespace GENERATE{
   TF1 * TF_fMomentum;
   TF1 * TF_fEnergy;
 
-  bool psi_2S = false;
+  bool do_PomLQCD = false;
   /* Bremsstrahlung photon */
 
   int fail = 0;
@@ -425,6 +435,10 @@ namespace GENERATE{
     std::cout << "The specific weight calculation has failed " << fail << " times." << std::endl;
     return 0;
   }
+
+  void SetPomLQCD(){
+    do_PomLQCD = true;
+  }
   /* Nucleon from a nuclear target */
   
   double GetNucleon(TLorentzVector * P){
@@ -449,6 +463,36 @@ namespace GENERATE{
 
   double cthrange[2] = {-1.0, 1.0};
   double perange[2] = {0.0, 10.0};
+  /* Added 5/19/2021 for Upsilon Production Model based on Slyvester */
+  double VirtualPhoton_new(const TLorentzVector * ki, TLorentzVector * kf){
+    //ki: e, N; kf: e', gamma
+    double m = PARTICLE::e.M();
+    double mY = PARTICLE::upsilon1S.M();
+    double Pe = random.Uniform(perange[0], perange[1]);
+    double cth = random.Uniform(cthrange[0], cthrange[1]);
+    double sth = sqrt(1.0 - cth * cth);
+    double phi = random.Uniform(-M_PI, M_PI);
+    kf[0].SetXYZM(Pe * sth * cos(phi), Pe * sth * sin(phi), Pe * cth, m);//e'
+    kf[1] = ki[0] - kf[0];//virtual photon
+    double W2 = (kf[1] + ki[1]) * (kf[1] + ki[1]);//W^2 = (P + q)^2
+    if (W2 < Mp * Mp)
+      {
+	return 0;//below the lowest state
+      }
+    double Q2 = - kf[1] * kf[1];//Q^2 = -q^2
+    double alpha_em = 1.0 / 137.0;
+    double couple = 4.0 * M_PI * alpha_em;
+    double flux = sqrt(pow(ki[1] * kf[1], 2) + Q2 * Mp * Mp) / sqrt(pow(ki[0] * ki[1], 2) - m * m * Mp * Mp);
+    double amp = (2.0 * Q2 - 4.0 * m * m) / (Q2 * Q2);
+    double phase = kf[0].P() * kf[0].P() / (2.0 * kf[0].E() * pow(2.0 * M_PI, 3));
+    double volume = 2.0 * M_PI * abs(perange[1] - perange[0]) * abs(cthrange[1] - cthrange[0]);
+    double y = (ki[1] * kf[1]) / (ki[1] * ki[0]);
+    double gy = ki[1].M() * sqrt(Q2) / (ki[1] * ki[0]);
+    double epsilon = (1.0 - y - 0.25 * gy * gy) / (1.0 - y + 0.5 * y * y + 0.25 * gy * gy);
+    double dipole = pow((mY*mY)/(Q2+mY*mY),2.575); // Equation A4
+    double R = pow((2.164*mY*mY + Q2)/(2.164*mY*mY),2.131) - 1.0;
+    return volume * (1.0 + epsilon * R) * dipole;
+  }
 
   double VirtualPhoton(const TLorentzVector * ki, TLorentzVector * kf){
     //ki: e, N; kf: e', gamma
@@ -477,7 +521,27 @@ namespace GENERATE{
     return couple * flux * amp * phase * volume / (1.0 - epsilon);
   }
 
-  
+  /* Upsilon1S productions */
+  double Upsilon1SElectroproduction(const TLorentzVector * ki, TLorentzVector *kf){
+    //ki: e, N; kf: e', Psi2S, N'
+    double weight1 = VirtualPhoton(ki, kf);//Generate scattered electron
+    if (weight1 == 0) return 0;
+    TLorentzVector Pout = kf[1] + ki[1]; // q + N
+    double W = Pout.M();
+    double Mup = PARTICLE::upsilon1S.RandomM();
+    if (W < Mup + Mp)
+      {
+	return 0; //below the threshold
+      }
+    double mass[2] = {Mup, Mp};
+    GenPhase.SetDecay(Pout, 2, mass);
+    GenPhase.Generate();//uniform generate in 4pi solid angle
+    kf[1] = *GenPhase.GetDecay(0);//Psi2S
+    kf[2] = *GenPhase.GetDecay(1);//N'    
+    double t = (ki[1] - kf[2]) * (ki[1] - kf[2]);
+    double weight2 = UPSILONMODEL::dSigmaY1S(W,t);
+    return weight1*weight2;
+  }
   /* Psi2S productions */
   double Psi2SPhotoproduction(const TLorentzVector * ki, TLorentzVector * kf){
     //ki: gamma, N; kf: Psi2S, N'
@@ -501,7 +565,16 @@ namespace GENERATE{
     double volume = 4.0 * M_PI;
     double Jac = 2.0 * k * q / (2.0 * M_PI);
     double flux = sqrt(pow(ki[0] * ki[1], 2) - (ki[0] * ki[0]) * (ki[1] * ki[1])) / (Mp * ki[0].P());
-    double weight = PSI2SMODEL::dSigmaPsi2S(x,t) * Jac * flux * volume;
+    double cth = (sqrt(ki[0] * ki[0] + q * q) * sqrt(kf[0] * kf[0] + k * k) - ki[0] * kf[0]) / (q * k);
+    double weight = 0.0;
+    if(do_PomLQCD)
+      {
+	weight = 0.16 * JPSIPomLQCD::dSigmaJpsi(W,cth) * volume;
+      }
+    else
+      {
+	weight = PSI2SMODEL::dSigmaPsi2S(x,t) * Jac * flux * volume;
+      }
     return weight;//GeV^-2
   }
 
@@ -512,6 +585,32 @@ namespace GENERATE{
     TLorentzVector ki2[2] = {kf[1], ki[1]};//Initial state: virtual photon N
     double weight2 = Psi2SPhotoproduction(ki2, &kf[1]);//Generate Psi2S N' from virtual photon production
     return weight1 * weight2;
+  }
+  double Event_eN2eNee_Upsilon1S(const TLorentzVector * ki, TLorentzVector * kf){
+    //ki: e, N; kf: e', N', [e+, e-]
+    TLorentzVector kf1[3];//e', Y1S, N'
+    double weight = Upsilon1SElectroproduction(ki, kf1);
+    kf[0] = kf1[0];//e'
+    kf[1] = kf1[2];//N'
+    double mass[2] = {PARTICLE::e.M(), PARTICLE::e.M()};
+    GenPhase.SetDecay(kf1[1], 2, mass);
+    GenPhase.Generate();
+    kf[2] = *GenPhase.GetDecay(0);//e+
+    kf[3] = *GenPhase.GetDecay(1);//e-
+    double Mup = kf1[1].M();
+    double Ep = kf1[2] * kf1[1] / Mup;//recoil proton energy in Upsilon1S rest frame
+    double p = sqrt(Ep * Ep - Mp * Mp);//recoil proton momentum in Upsilon1S rest frame
+    double l = sqrt(pow(Mup * Mup - kf[2] * kf[2] - kf[3] * kf[3], 2) - 4.0 * (kf[2] * kf[2]) * (kf[3] * kf[3])) / (2.0 * Mup);//decayed lepton momentum in Upsilon1S rest frame
+    double cth = (Ep * Mup / 2.0 - kf[2] * kf[1]) / (p * l);//cos(theta) between final lepton and final proton in Upsilon1S rest frame
+    double y = (ki[0].E() - kf[0].E()) / ki[0].E();
+    double Q2 = - (ki[0] - kf[0]) * (ki[0] - kf[0]);
+    double gy = sqrt(Q2) / ki[0].E();
+    double epsilon = (1.0 - y - 0.25 * gy * gy) / (1.0 - y + 0.5 * y * y + 0.25 * gy * gy);
+    double R = pow(1.0 + Q2 / 2.164 / pow(Mup,2), 2.131) - 1.0;
+    double r = epsilon * R / (1.0 + epsilon * R);
+    double wth = 3.0 / 4.0 * (1.0 + r + (1.0 - 3.0 * r) * pow(cth,2));
+    double branch = 2.38e-2;//Branch ratio to e+e- (Psi_2S)
+    return weight * wth * branch;
   }
   
   double Event_gN2Nee_Psi2S(const TLorentzVector * ki, TLorentzVector * kf){
