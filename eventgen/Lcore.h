@@ -206,8 +206,8 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
                  // Data points generated from webplotdigitizer
   
   // gsl workspace for integration of Dispersion integral
-  gsl_integration_workspace * w = gsl_integration_workspace_alloc(1000);
-  gsl_function F;
+  gsl_integration_workspace * _w = gsl_integration_workspace_alloc(2048);
+  gsl_function _F;
   
   double ImaginaryT(const double s){
     double nu = 0.5*(s-Mp*Mp-Mv*Mv);
@@ -223,22 +223,36 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
     return Disc_el+Disc_inel;
   }
 
-  double dispersion_integral(double *x, double *p)
+  double ImaginaryT_nu(const double nu){
+
+    double Disc_el = 0.0;
+    double Disc_inel = 0.0;
+
+    if(nu>nu_el)
+      Disc_el = C_el*pow(1.0-nu_el/nu,b_el)*pow(nu/nu_el,a_el);
+    if(nu>nu_inel)
+      Disc_inel = C_inel*pow(1.0-nu_inel/nu,b_inel)*pow(nu/nu_inel,a_inel);
+    
+    return Disc_el+Disc_inel;
+  }
+
+  double dispersion_integral(double x, void *p)
   {
-    double nuPRIME = x[0];
-    double nu = p[0];
+    double nuPRIME = x;
+    double nu = *(double *) p;
     double s = 2*nu + Mp*Mp + Mv*Mv;
-    return (ImaginaryT(s))/(nuPRIME*(nuPRIME*nuPRIME-nu*nu));
+    return (ImaginaryT_nu(nuPRIME)/nuPRIME - ImaginaryT_nu(nu)/nu)/((nuPRIME*nuPRIME-nu*nu));
   }
 
   double RealT(const double s){
     double nu = 0.5*(s-Mp*Mp-Mv*Mv);
     double T0 = 20.5; // Can be set to 0, 20.5, or 87, see paper for details
-    _f1->SetParameters(nu, 0.0);
-    double e1 = 0.0;
-    double e2 = 0.0;
-    double integral = _f1->Integral(nu_el,nu-epsilon)+_f1->Integral(nu+epsilon,TMath::Infinity());
-    return T0 + 2.0/M_PI * nu*nu * integral; 
+    _F.params = &nu;
+    double result, error;
+    gsl_integration_qagiu(&_F, nu_el, 0, 1e-8, 2048, _w, &result, &error);
+    result+= ImaginaryT(nu)/nu * std::log(std::fabs((nu_el+nu)/(nu_el-nu))) / (2 * nu);
+    //double integral = _f1->Integral(nu_el,nu-epsilon)+_f1->Integral(nu+epsilon,TMath::Infinity());
+    return T0 + 2.0/M_PI * nu*nu * result; 
   }
 
   double (*dSigmaY1S)(const double, const double); // W , t
@@ -260,9 +274,9 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
     if (strcmp(model, "v1") == 0)
       {
 	dSigmaY1S = &dSigmaY1S_v1;
-	_f1 = new TF1("func", dispersion_integral, nu_el, numax, 1);
 	_fmodel = new TFile("upsilon-model/upsilon_1S_B.root","READ");
 	_g = (TGraph*)_fmodel->Get("T0_20.5");
+	_F.function = &dispersion_integral;
       }
     else {
       cout << "No matching model! Set to v1 model!" << endl;
@@ -609,7 +623,7 @@ namespace GENERATE{
     double R = pow(1.0 + Q2 / 2.164 / pow(Mup,2), 2.131) - 1.0;
     double r = epsilon * R / (1.0 + epsilon * R);
     double wth = 3.0 / 4.0 * (1.0 + r + (1.0 - 3.0 * r) * pow(cth,2));
-    double branch = 2.38e-2;//Branch ratio to e+e- (Psi_2S)
+    double branch = 2.38e-2;//Branch ratio to e+e- (Y1S)
     return weight * wth * branch;
   }
   
