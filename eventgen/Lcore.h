@@ -200,10 +200,15 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
   const double epsilon = 0.0001;
   const double numax = 2000000.0; // maximum bound for infinite integration 
 
-  TFile *_fmodel = 0;
+  const double khbar = 4.135667662e-15 / TMath::TwoPi();
+  // Speed of light (m/s)
+  const double kc = 299792458.;
+  // hhbarc (fm * GeV)
+  const double khbarc = khbar * kc * 1e6;
+  // khbarc2 (nb * GeV^2, using 1fm^2 = 10mb^2 =1e7nb^2)
+  const double khbarc2 = khbarc * khbarc * 1e7;
+  
   TF1 *_f1 = 0;
-  TGraph *_g = 0; // Data points of Slope B vs. W taken for T0=20.5 (see paper)
-                 // Data points generated from webplotdigitizer
   
   // gsl workspace for integration of Dispersion integral
   gsl_integration_workspace * _w = gsl_integration_workspace_alloc(2048);
@@ -251,31 +256,56 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
     double result, error;
     gsl_integration_qagiu(&_F, nu_el, 0, 1e-8, 2048, _w, &result, &error);
     result+= ImaginaryT(nu)/nu * std::log(std::fabs((nu_el+nu)/(nu_el-nu))) / (2 * nu);
-    //double integral = _f1->Integral(nu_el,nu-epsilon)+_f1->Integral(nu+epsilon,TMath::Infinity());
     return T0 + 2.0/M_PI * nu*nu * result; 
   }
 
+  double B(double *xx, double *par)
+  {
+    double b = xx[0];
+    double tmin = par[0];
+    double tmax = par[1];
+    double sigma = par[2];
+    double A = par[3];
+    
+    return (b - A*exp(b*tmax)/sigma + A*exp(b*tmin)/sigma);
+  }
   double (*dSigmaY1S)(const double, const double); // W , t
 
   double dSigmaY1S_v1(const double W, const double t){
     double s = W*W;
+    double nu = 0.5*(s-Mp*Mp-Mv*Mv);
     double f = 0.238;
     double alpha = 1./137.;
     double e = sqrt(4.0*M_PI*alpha); // electric charge
+    double qvp = sqrt((0.25/s)*(s-pow(Mv+Mp,2))*(s-pow(Mv-Mp,2)));
     double qgp = (s-Mp*Mp)/(2.0*sqrt(s));
     double coeff = pow(e*f/Mv,2)/(64.0*M_PI*s*qgp*qgp);
     double ReT = RealT(s);
     double ImT = ImaginaryT(s);
-    double B = _g->Eval(W);
-    return coeff * (ReT*ReT + ImT*ImT) * exp(B*t);
-  }
+    
+    double sigma_el = (std::pow(e * f / Mv, 2) * 1 / (2 * W * qgp) *
+		       (qvp / qgp) * C_el *
+		       std::pow(1 - nu_el / nu, b_el) *
+		       std::pow(nu / nu_el, a_el) * khbarc2); // units nb
+
+    // Minimum & Maximum integrating t
+    double tmax = Mv * Mv -2.0 * qgp * ( sqrt ( qvp * qvp + Mv * Mv ) - qvp ); // less negative
+    double tmin = Mv * Mv -2.0 * qgp * ( sqrt ( qvp * qvp + Mv * Mv ) + qvp ); // more negative
+
+    double dodt_t0 = coeff * (ReT*ReT + ImT*ImT) * 3.89e5; // units nb/GeV^2
+    double A = dodt_t0;
+    _f1->SetParameters(tmin,tmax,sigma_el,A);
+    
+    double B = _f1->GetX(0.0,0.5,10); // units 1/GeV^2
+
+    return A * exp(B*t); // units nb/GeV^2
+   }
 
   int SetModel(const char * model = "v1"){
     if (strcmp(model, "v1") == 0)
       {
 	dSigmaY1S = &dSigmaY1S_v1;
-	_fmodel = new TFile("upsilon-model/upsilon_1S_B.root","READ");
-	_g = (TGraph*)_fmodel->Get("T0_20.5");
+	_f1 = new TF1("B_func",B,0,10,4);
 	_F.function = &dispersion_integral;
       }
     else {
