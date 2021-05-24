@@ -514,40 +514,61 @@ namespace GENERATE{
   double Wrange[2] = {0.0, 1.0};
   double trange[2] = {-100.0, 0.0};
 
-  double VirtualPhoton_new(const TLorentzVector * ki, TLorentzVector * kf){
+  double VirtualPhoton_new(TLorentzVector * ki, TLorentzVector * kf){
     //ki: e, N; kf: e', gamma
     double m = PARTICLE::e.M();
-    double mp = PARTICLE::proton.M();
+    //double mp = PARTICLE::proton.M();
+    double mp = ki[1].M();
     double mY = PARTICLE::upsilon1S.M();
 
     // Step 1.) Select event Q2, W2
     double Q2 = random.Uniform(Q2range[0],Q2range[1]);
     double W2 = random.Uniform(pow(Wrange[0],2),pow(Wrange[1],2));
+    cout << " W2 = " << W2 << endl;
+    cout << " Q2 = " << Q2 << endl;
+    if (W2 < mp * mp)
+      {
+	cout << "Event failed in VirtualPhoton_new | W2 = " << W2 << " < mp^2 = " << mp*mp << endl;
+	return 0;//below the lowest state
+      }
     // Step 2.) Boost both e & N into "N" rest frame where the kinematics are easier
-    TVector3 beta = ki[1]->BoostVector();
-    ki[0]->Boost(-beta);
-    ki[1]->Boost(-beta);
+    TVector3 beta = ki[1].BoostVector();
+    ki[0].Boost(-beta);
+    ki[1].Boost(-beta);
+    // Step 2.5) Rotate the vectors such that the z direction points along ki[0]'s momentum
+    TVector3 direction(1.0,0,0);
+    direction.SetPhi(ki[0].Phi());
+    direction.SetTheta(ki[0].Theta()/2.0);
+    ki[0].Rotate(M_PI,direction);
     // Step 3.) Calculate the energy, momentum, etc. of the scattered e- and gamma*
     double _Eg = (W2 - mp * mp + Q2) / ( 2.0 * mp);
     double _Ee = ki[0].E();
     double _Eeprime = _Ee - _Eg;
+    if(_Eeprime < 0)
+      {
+	return 0; // impossible event
+      }
     double _Pe = sqrt(_Ee*_Ee - m * m);
     double _Peprime = sqrt(_Eeprime*_Eeprime - m * m);
-    double _cth = (Q2 - 2 m * m + 2 * _Ee * _Eeprime) / (2 * _Pe * _Peprime);
+    double _th = M_PI-std::acos((-Q2 - 2 * m * m + 2 * _Ee * _Eeprime) / (2 * _Pe * _Peprime));
+    double _cth= cos(_th);
     double _sth = sqrt(1.0 - _cth * _cth);
     double _phi = random.Uniform(-M_PI, M_PI);
-    kf[0].SetXYZM(_Pe * _sth * cos(_phi) , _Pe * _sth * sin(_phi) , _Pe * _cth, m);//e' in "N" rest frame
+    kf[0].SetXYZM(_Peprime * _sth * cos(_phi) , _Peprime * _sth * sin(_phi) , -_Peprime * _cth, m);//e' in "N" rest frame
     kf[1] = ki[0]-kf[0]; // virtual photon in "N" rest frame
+    // Step 3.5) Unrotate the vectors
+    ki[0].Rotate(M_PI,direction);
+    kf[0].Rotate(M_PI,direction);
+    kf[1].Rotate(M_PI,direction);
     // Step 4.) Boost back into originial frame
-    ki[0]->Boost(beta);
-    ki[1]->Boost(beta);
-    kf[0]->Boost(beta);
-    kf[1]->Boost(beta);
-    
-    if (W2 < mp * mp)
-      {
-	return 0;//below the lowest state
-      }
+    ki[0].Boost(beta);
+    ki[1].Boost(beta);
+    kf[0].Boost(beta);
+    kf[1].Boost(beta);
+    cout << "(**AFTER BOOST**)" << endl;
+    cout << "Incoming e- four momentum = " << "(" << ki[0].Px() << " , " << ki[0].Py() << " , " << ki[0].Pz() << " , " << ki[0].E() << ")" << endl;
+    cout << "Outgoing e- four momentum = " << "(" << kf[0].Px() << " , " << kf[0].Py() << " , " << kf[0].Pz() << " , " << kf[0].E() << ")" << endl;
+    cout << "Gamma * four momentum = " << "(" << kf[1].Px() << " , " << kf[1].Py() << " , " << kf[1].Pz() << " , " << kf[1].E() << ")" << endl;
 
     double alpha_em = 1.0 / 137.0;
     double volume = 2.0 * M_PI * abs(Q2range[1] - Q2range[0]) * abs(pow(Wrange[1],2) - pow(Wrange[0],2));
@@ -591,12 +612,11 @@ namespace GENERATE{
   }
 
   /* Upsilon1S productions */
-  double Upsilon1SElectroproduction(const TLorentzVector * ki, TLorentzVector *kf){
+  double Upsilon1SElectroproduction(TLorentzVector * ki, TLorentzVector *kf){
     //ki: e, N; kf: e', Psi2S, N'
 
     double weight1 = VirtualPhoton_new(ki, kf);//Generate scattered electron
-    if (weight1 == 0) return 0;
-    
+    if (weight1 == 0) return 0;    
     TLorentzVector Pout = kf[1] + ki[1]; // q + N
     double W = Pout.M();
     double W2 = W * W;
@@ -604,10 +624,9 @@ namespace GENERATE{
     double Mup = PARTICLE::upsilon1S.RandomM();
     if (W < Mup + Mp)
       {
+	cout << "Event failed in Upsilon1SElectroproduction | W = " << W << " < mp + Mup = " << Mp + Mup << endl;
 	return 0; //below the threshold
       }
-    double mass[2] = {Mup, Mp};
-
     // Step 1.) Randomly generate "t"
     double t = random.Uniform(trange[0],trange[1]);
     // Step 2.) Calculate beta s.t. we boost into the q + N rest C.O.M frame
@@ -627,26 +646,19 @@ namespace GENERATE{
     const double ctheta_cm =
       (t + 2 * Et_cm * Er_cm - Mp * Mp - Mp * Mp) / (2 * Pt_cm * Pr_cm);
     const double theta_cm = std::acos(ctheta_cm);
-    const double phi_cm = rng()->Uniform(0, TMath::TwoPi());
+    const double phi_cm = random.Uniform(0, TMath::TwoPi());
     const double stheta_cm = sqrt(1.0 - ctheta_cm * ctheta_cm);
     const double theta_cm2 = TMath::Pi() + theta_cm;
     const double ctheta_cm2 = std::cos(theta_cm2);
     const double stheta_cm2 = std::sin(theta_cm2);
     
     // Step 5.) Set the VM and p' in this C.O.M frame
-    kf[1]->SetXYZM(Pv_cm * stheta_cm * cos(phi_cm), Pv_cm * stheta_cm * sin(phi_cm), Pv_cm * ctheta_cm, Mup);
-    kf[2]->SetXYZM(Pr_cm * stheta_cm2 * cos(phi_cm), Pr_cm * stheta_cm2 * sin(phi_cm), Pr_cm * ctheta_cm2, Mp);
+    kf[1].SetXYZM(Pv_cm * stheta_cm * cos(phi_cm), Pv_cm * stheta_cm * sin(phi_cm), Pv_cm * ctheta_cm, Mup);
+    kf[2].SetXYZM(Pr_cm * stheta_cm2 * cos(phi_cm), Pr_cm * stheta_cm2 * sin(phi_cm), Pr_cm * ctheta_cm2, Mp);
     
     // Step 6.) Boost these particles back into the original frame
-    kf[1]->Boost(-beta);
-    kf[2]->Boost(-beta);
-
-
-    
-    double t = (ki[1] - kf[2]) * (ki[1] - kf[2]);
-    //    double k = sqrt(pow(W * W - kf[0] * kf[0] - kf[1] * kf[1], 2) - 4.0 * (kf[0] * kf[0]) * (kf[1] * kf[1])) / (2.0 * W);//final state c.m. momentum
-    //    double q = sqrt(pow(W * W - ki[0] * ki[0] - ki[1] * ki[1], 2) - 4.0 * (ki[0] * ki[0]) * (ki[1] * ki[1])) / (2.0 * W);//initial state c.m. momentum
-    //    double Jac = k*q/M_PI;
+    kf[1].Boost(-beta);
+    kf[2].Boost(-beta);
 
     double volume = trange[1]-trange[0];
     // Need to include flux factor because of moving target in this frame? //
@@ -698,7 +710,7 @@ namespace GENERATE{
     double weight2 = Psi2SPhotoproduction(ki2, &kf[1]);//Generate Psi2S N' from virtual photon production
     return weight1 * weight2;
   }
-  double Event_eN2eNee_Upsilon1S(const TLorentzVector * ki, TLorentzVector * kf){
+  double Event_eN2eNee_Upsilon1S(TLorentzVector * ki, TLorentzVector * kf){
     //ki: e, N; kf: e', N', [e+, e-]
     TLorentzVector kf1[3];//e', Y1S, N'
     double weight = Upsilon1SElectroproduction(ki, kf1);
