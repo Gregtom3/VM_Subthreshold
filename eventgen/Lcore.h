@@ -507,35 +507,60 @@ namespace GENERATE{
 
   double cthrange[2] = {-1.0, 1.0};
   double perange[2] = {0.0, 10.0};
+
+
   /* Added 5/19/2021 for Upsilon Production Model based on Slyvester */
+  double Q2range[2] = {0.0, 10.0};
+  double Wrange[2] = {0.0, 1.0};
+  double trange[2] = {-100.0, 0.0};
+
   double VirtualPhoton_new(const TLorentzVector * ki, TLorentzVector * kf){
     //ki: e, N; kf: e', gamma
     double m = PARTICLE::e.M();
+    double mp = PARTICLE::proton.M();
     double mY = PARTICLE::upsilon1S.M();
-    double Pe = random.Uniform(perange[0], perange[1]);
-    double cth = random.Uniform(cthrange[0], cthrange[1]);
-    double sth = sqrt(1.0 - cth * cth);
-    double phi = random.Uniform(-M_PI, M_PI);
-    kf[0].SetXYZM(Pe * sth * cos(phi), Pe * sth * sin(phi), Pe * cth, m);//e'
-    kf[1] = ki[0] - kf[0];//virtual photon
-    double W2 = (kf[1] + ki[1]) * (kf[1] + ki[1]);//W^2 = (P + q)^2
-    if (W2 < Mp * Mp)
+
+    // Step 1.) Select event Q2, W2
+    double Q2 = random.Uniform(Q2range[0],Q2range[1]);
+    double W2 = random.Uniform(pow(Wrange[0],2),pow(Wrange[1],2));
+    // Step 2.) Boost both e & N into "N" rest frame where the kinematics are easier
+    TVector3 beta = ki[1]->BoostVector();
+    ki[0]->Boost(-beta);
+    ki[1]->Boost(-beta);
+    // Step 3.) Calculate the energy, momentum, etc. of the scattered e- and gamma*
+    double _Eg = (W2 - mp * mp + Q2) / ( 2.0 * mp);
+    double _Ee = ki[0].E();
+    double _Eeprime = _Ee - _Eg;
+    double _Pe = sqrt(_Ee*_Ee - m * m);
+    double _Peprime = sqrt(_Eeprime*_Eeprime - m * m);
+    double _cth = (Q2 - 2 m * m + 2 * _Ee * _Eeprime) / (2 * _Pe * _Peprime);
+    double _sth = sqrt(1.0 - _cth * _cth);
+    double _phi = random.Uniform(-M_PI, M_PI);
+    kf[0].SetXYZM(_Pe * _sth * cos(_phi) , _Pe * _sth * sin(_phi) , _Pe * _cth, m);//e' in "N" rest frame
+    kf[1] = ki[0]-kf[0]; // virtual photon in "N" rest frame
+    // Step 4.) Boost back into originial frame
+    ki[0]->Boost(beta);
+    ki[1]->Boost(beta);
+    kf[0]->Boost(beta);
+    kf[1]->Boost(beta);
+    
+    if (W2 < mp * mp)
       {
 	return 0;//below the lowest state
       }
-    double Q2 = - kf[1] * kf[1];//Q^2 = -q^2
+
     double alpha_em = 1.0 / 137.0;
-    double couple = 4.0 * M_PI * alpha_em;
-    double flux = sqrt(pow(ki[1] * kf[1], 2) + Q2 * Mp * Mp) / sqrt(pow(ki[0] * ki[1], 2) - m * m * Mp * Mp);
-    double amp = (2.0 * Q2 - 4.0 * m * m) / (Q2 * Q2);
-    double phase = kf[0].P() * kf[0].P() / (2.0 * kf[0].E() * pow(2.0 * M_PI, 3));
-    double volume = 2.0 * M_PI * abs(perange[1] - perange[0]) * abs(cthrange[1] - cthrange[0]);
+    double volume = 2.0 * M_PI * abs(Q2range[1] - Q2range[0]) * abs(pow(Wrange[1],2) - pow(Wrange[0],2));
     double y = (ki[1] * kf[1]) / (ki[1] * ki[0]);
     double gy = ki[1].M() * sqrt(Q2) / (ki[1] * ki[0]);
     double epsilon = (1.0 - y - 0.25 * gy * gy) / (1.0 - y + 0.5 * y * y + 0.25 * gy * gy);
     double dipole = pow((mY*mY)/(Q2+mY*mY),2.575); // Equation A4
     double R = pow((2.164*mY*mY + Q2)/(2.164*mY*mY),2.131) - 1.0;
-    return volume * (1.0 + epsilon * R) * dipole;
+    double gammaT = alpha_em/(2*M_PI)*(1.0+pow(1.0-y,2))/(y*Q2);
+
+    // Step 5.) do/(dQ2 dW2 dt) --> dW2/dy do/(dQ2 dW2 dt) --> do/(dQ2 dy dt) --> do/dt 
+    double dW2dy = 2.0 * _Ee * mp;
+    return volume * dW2dy * (1.0 + epsilon * R) * dipole * gammaT;
   }
 
   double VirtualPhoton(const TLorentzVector * ki, TLorentzVector * kf){
@@ -568,22 +593,65 @@ namespace GENERATE{
   /* Upsilon1S productions */
   double Upsilon1SElectroproduction(const TLorentzVector * ki, TLorentzVector *kf){
     //ki: e, N; kf: e', Psi2S, N'
-    double weight1 = VirtualPhoton(ki, kf);//Generate scattered electron
+
+    double weight1 = VirtualPhoton_new(ki, kf);//Generate scattered electron
     if (weight1 == 0) return 0;
+    
     TLorentzVector Pout = kf[1] + ki[1]; // q + N
     double W = Pout.M();
+    double W2 = W * W;
+    double Q2 = -(kf[1]*kf[1]);
     double Mup = PARTICLE::upsilon1S.RandomM();
     if (W < Mup + Mp)
       {
 	return 0; //below the threshold
       }
     double mass[2] = {Mup, Mp};
-    GenPhase.SetDecay(Pout, 2, mass);
-    GenPhase.Generate();//uniform generate in 4pi solid angle
-    kf[1] = *GenPhase.GetDecay(0);//Psi2S
-    kf[2] = *GenPhase.GetDecay(1);//N'    
+
+    // Step 1.) Randomly generate "t"
+    double t = random.Uniform(trange[0],trange[1]);
+    // Step 2.) Calculate beta s.t. we boost into the q + N rest C.O.M frame
+    TVector3 beta = Pout.BoostVector();
+    // Step 3.) Calculate the final state particles in the C.O.M frame
+    // From lAger's code
+    // t --> "target"
+    // r --> "recoil"
+    // v --> "vector meson"
+    const double Et_cm = (W2 + Q2 + Mp*Mp) / (2. * W);
+    const double Pt_cm = sqrt(Et_cm * Et_cm - Mp*Mp);
+    const double Er_cm = (W2 - Mup*Mup + Mp*Mp) / (2. * W);
+    const double Pr_cm = sqrt(Er_cm * Er_cm - Mp*Mp);
+    const double Ev_cm = (W2 + Mup*Mup - Mp*Mp) / (2. * W);
+    const double Pv_cm = sqrt(Ev_cm * Ev_cm - Mup*Mup);
+    // Step 4.) From the generated "t", get the "theta" of the scattered p in this frame
+    const double ctheta_cm =
+      (t + 2 * Et_cm * Er_cm - Mp * Mp - Mp * Mp) / (2 * Pt_cm * Pr_cm);
+    const double theta_cm = std::acos(ctheta_cm);
+    const double phi_cm = rng()->Uniform(0, TMath::TwoPi());
+    const double stheta_cm = sqrt(1.0 - ctheta_cm * ctheta_cm);
+    const double theta_cm2 = TMath::Pi() + theta_cm;
+    const double ctheta_cm2 = std::cos(theta_cm2);
+    const double stheta_cm2 = std::sin(theta_cm2);
+    
+    // Step 5.) Set the VM and p' in this C.O.M frame
+    kf[1]->SetXYZM(Pv_cm * stheta_cm * cos(phi_cm), Pv_cm * stheta_cm * sin(phi_cm), Pv_cm * ctheta_cm, Mup);
+    kf[2]->SetXYZM(Pr_cm * stheta_cm2 * cos(phi_cm), Pr_cm * stheta_cm2 * sin(phi_cm), Pr_cm * ctheta_cm2, Mp);
+    
+    // Step 6.) Boost these particles back into the original frame
+    kf[1]->Boost(-beta);
+    kf[2]->Boost(-beta);
+
+
+    
     double t = (ki[1] - kf[2]) * (ki[1] - kf[2]);
-    double weight2 = UPSILONMODEL::dSigmaY1S(W,t);
+    //    double k = sqrt(pow(W * W - kf[0] * kf[0] - kf[1] * kf[1], 2) - 4.0 * (kf[0] * kf[0]) * (kf[1] * kf[1])) / (2.0 * W);//final state c.m. momentum
+    //    double q = sqrt(pow(W * W - ki[0] * ki[0] - ki[1] * ki[1], 2) - 4.0 * (ki[0] * ki[0]) * (ki[1] * ki[1])) / (2.0 * W);//initial state c.m. momentum
+    //    double Jac = k*q/M_PI;
+
+    double volume = trange[1]-trange[0];
+    // Need to include flux factor because of moving target in this frame? //
+    double weight2 = UPSILONMODEL::dSigmaY1S(W,t) * volume;
+
     return weight1*weight2;
   }
   /* Psi2S productions */
