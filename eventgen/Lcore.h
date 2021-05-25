@@ -524,8 +524,6 @@ namespace GENERATE{
     // Step 1.) Select event Q2, W2
     double Q2 = random.Uniform(Q2range[0],Q2range[1]);
     double W2 = random.Uniform(pow(Wrange[0],2),pow(Wrange[1],2));
-    cout << " W2 = " << W2 << endl;
-    cout << " Q2 = " << Q2 << endl;
     if (W2 < mp * mp)
       {
 	cout << "Event failed in VirtualPhoton_new | W2 = " << W2 << " < mp^2 = " << mp*mp << endl;
@@ -546,6 +544,7 @@ namespace GENERATE{
     double _Eeprime = _Ee - _Eg;
     if(_Eeprime < 0)
       {
+	cout << "_Eeprime < 0 " << endl;
 	return 0; // impossible event
       }
     double _Pe = sqrt(_Ee*_Ee - m * m);
@@ -565,12 +564,15 @@ namespace GENERATE{
     ki[1].Boost(beta);
     kf[0].Boost(beta);
     kf[1].Boost(beta);
-    cout << "(**AFTER BOOST**)" << endl;
-    cout << "Incoming e- four momentum = " << "(" << ki[0].Px() << " , " << ki[0].Py() << " , " << ki[0].Pz() << " , " << ki[0].E() << ")" << endl;
-    cout << "Outgoing e- four momentum = " << "(" << kf[0].Px() << " , " << kf[0].Py() << " , " << kf[0].Pz() << " , " << kf[0].E() << ")" << endl;
-    cout << "Gamma * four momentum = " << "(" << kf[1].Px() << " , " << kf[1].Py() << " , " << kf[1].Pz() << " , " << kf[1].E() << ")" << endl;
+    //    cout << "(**AFTER BOOST**)" << endl;
+    //    cout << "Incoming e- four momentum = " << "(" << ki[0].Px() << " , " << ki[0].Py() << " , " << ki[0].Pz() << " , " << ki[0].E() << ")" << endl;
+    //    cout << "Outgoing e- four momentum = " << "(" << kf[0].Px() << " , " << kf[0].Py() << " , " << kf[0].Pz() << " , " << kf[0].E() << ")" << endl;
+    //    cout << "Gamma * four momentum = " << "(" << kf[1].Px() << " , " << kf[1].Py() << " , " << kf[1].Pz() << " , " << kf[1].E() << ")" << endl;
 
     double alpha_em = 1.0 / 137.0;
+    //    double ymin = (pow(Wrange[0],2) + Q2range[0] - mp * mp)/(2.0 * _Ee * mp);
+    //    double ymax = (pow(Wrange[1],2) + Q2range[1] - mp * mp)/(2.0 * _Ee * mp);
+    //    cout << "y ~ [ " << ymin << " , " << ymax << " ] " << endl;
     double volume = 2.0 * M_PI * abs(Q2range[1] - Q2range[0]) * abs(pow(Wrange[1],2) - pow(Wrange[0],2));
     double y = (ki[1] * kf[1]) / (ki[1] * ki[0]);
     double gy = ki[1].M() * sqrt(Q2) / (ki[1] * ki[0]);
@@ -581,7 +583,7 @@ namespace GENERATE{
 
     // Step 5.) do/(dQ2 dW2 dt) --> dW2/dy do/(dQ2 dW2 dt) --> do/(dQ2 dy dt) --> do/dt 
     double dW2dy = 2.0 * _Ee * mp;
-    return volume * dW2dy * (1.0 + epsilon * R) * dipole * gammaT;
+    return volume * (1.0 + epsilon * R) * dipole * gammaT / dW2dy;
   }
 
   double VirtualPhoton(const TLorentzVector * ki, TLorentzVector * kf){
@@ -616,11 +618,13 @@ namespace GENERATE{
     //ki: e, N; kf: e', Psi2S, N'
 
     double weight1 = VirtualPhoton_new(ki, kf);//Generate scattered electron
-    if (weight1 == 0) return 0;    
+    if (weight1 == 0) return 0;
+    double mp = ki[1].M();
     TLorentzVector Pout = kf[1] + ki[1]; // q + N
     double W = Pout.M();
     double W2 = W * W;
     double Q2 = -(kf[1]*kf[1]);
+    //    cout << "Q2 = " << Q2 << endl;
     double Mup = PARTICLE::upsilon1S.RandomM();
     if (W < Mup + Mp)
       {
@@ -631,35 +635,56 @@ namespace GENERATE{
     double t = random.Uniform(trange[0],trange[1]);
     // Step 2.) Calculate beta s.t. we boost into the q + N rest C.O.M frame
     TVector3 beta = Pout.BoostVector();
+    // Step 2.5) Calculate axis of rotation such that final state particles are created in a frame where "p" lies along the z-axis
+    ki[1].Boost(-beta);
+    kf[1].Boost(-beta);
+    TVector3 direction(1.0,0,0);
+    direction.SetPhi(ki[1].Phi());
+    direction.SetTheta(ki[1].Theta()/2.0);
+    //    ki[1].Print();
+    //    kf[1].Print();
+    kf[1].Boost(beta);
+    ki[1].Boost(beta);
     // Step 3.) Calculate the final state particles in the C.O.M frame
     // From lAger's code
     // t --> "target"
     // r --> "recoil"
     // v --> "vector meson"
-    const double Et_cm = (W2 + Q2 + Mp*Mp) / (2. * W);
-    const double Pt_cm = sqrt(Et_cm * Et_cm - Mp*Mp);
+    const double Et_cm = (W2 + Q2 + mp*mp) / (2. * W);
+    const double Pt_cm = sqrt(Et_cm * Et_cm - mp*mp);
     const double Er_cm = (W2 - Mup*Mup + Mp*Mp) / (2. * W);
     const double Pr_cm = sqrt(Er_cm * Er_cm - Mp*Mp);
     const double Ev_cm = (W2 + Mup*Mup - Mp*Mp) / (2. * W);
     const double Pv_cm = sqrt(Ev_cm * Ev_cm - Mup*Mup);
     // Step 4.) From the generated "t", get the "theta" of the scattered p in this frame
     const double ctheta_cm =
-      (t + 2 * Et_cm * Er_cm - Mp * Mp - Mp * Mp) / (2 * Pt_cm * Pr_cm);
+      (t + 2 * Et_cm * Er_cm - mp * mp - Mp * Mp) / (2 * Pt_cm * Pr_cm);
+    if(ctheta_cm>1.0||ctheta_cm<-1.0)
+      {
+	
+	//	cout << " ctheta_cm = " << ctheta_cm << " out of bounds [-1,1] | DEBUG | t = " << t << endl;
+	//	cout << " (E,p,mp) = (" << Et_cm << "," << Pt_cm << "," << mp << ")" << endl;
+	//	cout << " (E',p',mp') = (" << Er_cm << "," << Pr_cm << "," << Mp << ")" << endl;
+	//	cout << " (Ev,pv,mv) = (" << Ev_cm << "," << Pv_cm << "," << Mup << ")" << endl;
+	//	cout << " Numerator = t + " << 2 * Et_cm * Er_cm - mp * mp - Mp * Mp << endl;
+	//	cout << " Denominator = " << 2 * Pt_cm * Pr_cm << endl;
+	return 0;
+      }
     const double theta_cm = std::acos(ctheta_cm);
     const double phi_cm = random.Uniform(0, TMath::TwoPi());
     const double stheta_cm = sqrt(1.0 - ctheta_cm * ctheta_cm);
-    const double theta_cm2 = TMath::Pi() + theta_cm;
+    const double theta_cm2 = TMath::Pi() - theta_cm;
     const double ctheta_cm2 = std::cos(theta_cm2);
     const double stheta_cm2 = std::sin(theta_cm2);
-    
     // Step 5.) Set the VM and p' in this C.O.M frame
-    kf[1].SetXYZM(Pv_cm * stheta_cm * cos(phi_cm), Pv_cm * stheta_cm * sin(phi_cm), Pv_cm * ctheta_cm, Mup);
-    kf[2].SetXYZM(Pr_cm * stheta_cm2 * cos(phi_cm), Pr_cm * stheta_cm2 * sin(phi_cm), Pr_cm * ctheta_cm2, Mp);
-    
+    kf[1].SetXYZM(Pv_cm * stheta_cm2 * cos(phi_cm), Pv_cm * stheta_cm2 * sin(phi_cm), Pv_cm * ctheta_cm2, Mup);
+    kf[2].SetXYZM(-Pr_cm * stheta_cm * cos(phi_cm), Pr_cm * stheta_cm * sin(-phi_cm), Pr_cm * ctheta_cm, Mp);
+    // Step 5.5) Rotate the VM and p' such that p is on the z-axis
+    kf[1].Rotate(M_PI,direction);
+    kf[2].Rotate(M_PI,direction);
     // Step 6.) Boost these particles back into the original frame
-    kf[1].Boost(-beta);
-    kf[2].Boost(-beta);
-
+    kf[1].Boost(beta);
+    kf[2].Boost(beta);
     double volume = trange[1]-trange[0];
     // Need to include flux factor because of moving target in this frame? //
     double weight2 = UPSILONMODEL::dSigmaY1S(W,t) * volume;
