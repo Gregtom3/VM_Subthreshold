@@ -271,6 +271,21 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
   }
   double (*dSigmaY1S)(const double, const double); // W , t
 
+  double tmax(const double Mv, const double Mp, const double W)
+  {
+    double s = W*W;
+    double qvp = sqrt((0.25/s)*(s-pow(Mv+Mp,2))*(s-pow(Mv-Mp,2)));
+    double qgp = (s-Mp*Mp)/(2.0*sqrt(s));
+    return Mv * Mv -2.0 * qgp * ( sqrt ( qvp * qvp + Mv * Mv ) - qvp ); // less negative
+  }
+
+  double tmin(const double Mv, const double Mp, const double W)
+  {
+    double s = W*W;
+    double qvp = sqrt((0.25/s)*(s-pow(Mv+Mp,2))*(s-pow(Mv-Mp,2)));
+    double qgp = (s-Mp*Mp)/(2.0*sqrt(s));
+    return Mv * Mv -2.0 * qgp * ( sqrt ( qvp * qvp + Mv * Mv ) + qvp ); // more negative
+  }
   double dSigmaY1S_v1(const double W, const double t){
     double s = W*W;
     double nu = 0.5*(s-Mp*Mp-Mv*Mv);
@@ -282,25 +297,47 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
     double coeff = pow(e*f/Mv,2)/(64.0*M_PI*s*qgp*qgp);
     double ReT = RealT(s);
     double ImT = ImaginaryT(s);
-    
+    double dodt_t0 = coeff * (ReT*ReT + ImT*ImT) * 3.89e5; // units nb/GeV^2
+    double A = dodt_t0;
+    double tmin_ = tmin(Mv,Mp,W);
+    double tmax_ = tmax(Mv,Mp,W);
+   
     double sigma_el = (std::pow(e * f / Mv, 2) * 1 / (2 * W * qgp) *
 		       (qvp / qgp) * C_el *
 		       std::pow(1 - nu_el / nu, b_el) *
 		       std::pow(nu / nu_el, a_el) * khbarc2); // units nb
 
-    // Minimum & Maximum integrating t
-    double tmax = Mv * Mv -2.0 * qgp * ( sqrt ( qvp * qvp + Mv * Mv ) - qvp ); // less negative
-    double tmin = Mv * Mv -2.0 * qgp * ( sqrt ( qvp * qvp + Mv * Mv ) + qvp ); // more negative
-
+    _f1->SetParameters(tmin_,tmax_,sigma_el,A);
+    double B = _f1->GetX(0.0,0.5,10); // units 1/GeV^2
+    return A * exp(B*t); // units nb/GeV^2
+  }
+  double B(const double Mv, const double Mp, const double W)
+  {
+    double s = W*W;
+    double nu = 0.5*(s-Mp*Mp-Mv*Mv);
+    double f = 0.238;
+    double alpha = 1./137.;
+    double e = sqrt(4.0*M_PI*alpha); // electric charge
+    double qvp = sqrt((0.25/s)*(s-pow(Mv+Mp,2))*(s-pow(Mv-Mp,2)));
+    double qgp = (s-Mp*Mp)/(2.0*sqrt(s));
+    double coeff = pow(e*f/Mv,2)/(64.0*M_PI*s*qgp*qgp);
+    double ReT = RealT(s);
+    double ImT = ImaginaryT(s);
     double dodt_t0 = coeff * (ReT*ReT + ImT*ImT) * 3.89e5; // units nb/GeV^2
     double A = dodt_t0;
-    _f1->SetParameters(tmin,tmax,sigma_el,A);
-    
+    double tmin_ = tmin(Mv,Mp,W);
+    double tmax_ = tmax(Mv,Mp,W);
+   
+    double sigma_el = (std::pow(e * f / Mv, 2) * 1 / (2 * W * qgp) *
+		       (qvp / qgp) * C_el *
+		       std::pow(1 - nu_el / nu, b_el) *
+		       std::pow(nu / nu_el, a_el) * khbarc2); // units nb
+
+    _f1->SetParameters(tmin_,tmax_,sigma_el,A);
     double B = _f1->GetX(0.0,0.5,10); // units 1/GeV^2
 
-    return A * exp(B*t); // units nb/GeV^2
-   }
-
+    return B;
+  }
   int SetModel(const char * model = "v1"){
     if (strcmp(model, "v1") == 0)
       {
@@ -511,9 +548,10 @@ namespace GENERATE{
 
   /* Added 5/19/2021 for Upsilon Production Model based on Slyvester */
   double Q2range[2] = {0.0, 10.0};
-  double Wrange[2] = {0.0, 1.0};
+  double Wrange[2] = {0.0, 9999.0};
   double trange[2] = {-100.0, 0.0};
-
+  double yrange[2] = {0.1,0.8};
+  
   double VirtualPhoton_new(TLorentzVector * ki, TLorentzVector * kf){
     //ki: e, N; kf: e', gamma
     double m = PARTICLE::e.M();
@@ -521,14 +559,10 @@ namespace GENERATE{
     double mp = ki[1].M();
     double mY = PARTICLE::upsilon1S.M();
 
-    // Step 1.) Select event Q2, W2
+    // Step 1.) Select event Q2, y
     double Q2 = random.Uniform(Q2range[0],Q2range[1]);
-    double W2 = random.Uniform(pow(Wrange[0],2),pow(Wrange[1],2));
-    if (W2 < mp * mp)
-      {
-	cout << "Event failed in VirtualPhoton_new | W2 = " << W2 << " < mp^2 = " << mp*mp << endl;
-	return 0;//below the lowest state
-      }
+    //  double W2 = random.Uniform(pow(Wrange[0],2),pow(Wrange[1],2));
+    double y = random.Uniform(yrange[0],yrange[1]);
     // Step 2.) Boost both e & N into "N" rest frame where the kinematics are easier
     TVector3 beta = ki[1].BoostVector();
     ki[0].Boost(-beta);
@@ -539,17 +573,25 @@ namespace GENERATE{
     direction.SetTheta(ki[0].Theta()/2.0);
     ki[0].Rotate(M_PI,direction);
     // Step 3.) Calculate the energy, momentum, etc. of the scattered e- and gamma*
-    double _Eg = (W2 - mp * mp + Q2) / ( 2.0 * mp);
     double _Ee = ki[0].E();
+    double W2 = (2 * ki[1].M() * _Ee * y - Q2 + ki[1].M()*ki[1].M());
+    double _Eg = (W2 - mp * mp + Q2) / ( 2.0 * mp);
     double _Eeprime = _Ee - _Eg;
     if(_Eeprime < 0)
       {
-	cout << "_Eeprime < 0 " << endl;
 	return 0; // impossible event
+      }
+    if ((W2 < mp * mp) || (sqrt(W2) < Wrange[0]) || (sqrt(W2) > Wrange[1]))
+      {
+	return 0;//below the lowest state
       }
     double _Pe = sqrt(_Ee*_Ee - m * m);
     double _Peprime = sqrt(_Eeprime*_Eeprime - m * m);
     double _th = M_PI-std::acos((-Q2 - 2 * m * m + 2 * _Ee * _Eeprime) / (2 * _Pe * _Peprime));
+    if(isnan(_th))
+      {
+	return 0;
+      }
     double _cth= cos(_th);
     double _sth = sqrt(1.0 - _cth * _cth);
     double _phi = random.Uniform(-M_PI, M_PI);
@@ -564,26 +606,24 @@ namespace GENERATE{
     ki[1].Boost(beta);
     kf[0].Boost(beta);
     kf[1].Boost(beta);
-    //    cout << "(**AFTER BOOST**)" << endl;
-    //    cout << "Incoming e- four momentum = " << "(" << ki[0].Px() << " , " << ki[0].Py() << " , " << ki[0].Pz() << " , " << ki[0].E() << ")" << endl;
-    //    cout << "Outgoing e- four momentum = " << "(" << kf[0].Px() << " , " << kf[0].Py() << " , " << kf[0].Pz() << " , " << kf[0].E() << ")" << endl;
-    //    cout << "Gamma * four momentum = " << "(" << kf[1].Px() << " , " << kf[1].Py() << " , " << kf[1].Pz() << " , " << kf[1].E() << ")" << endl;
-
     double alpha_em = 1.0 / 137.0;
-    //    double ymin = (pow(Wrange[0],2) + Q2range[0] - mp * mp)/(2.0 * _Ee * mp);
-    //    double ymax = (pow(Wrange[1],2) + Q2range[1] - mp * mp)/(2.0 * _Ee * mp);
-    //    cout << "y ~ [ " << ymin << " , " << ymax << " ] " << endl;
-    double volume = 2.0 * M_PI * abs(Q2range[1] - Q2range[0]) * abs(pow(Wrange[1],2) - pow(Wrange[0],2));
-    double y = (ki[1] * kf[1]) / (ki[1] * ki[0]);
+    double volume = 2.0 * M_PI * abs(Q2range[1] - Q2range[0]) * abs(yrange[1] - yrange[0]);
     double gy = ki[1].M() * sqrt(Q2) / (ki[1] * ki[0]);
     double epsilon = (1.0 - y - 0.25 * gy * gy) / (1.0 - y + 0.5 * y * y + 0.25 * gy * gy);
     double dipole = pow((mY*mY)/(Q2+mY*mY),2.575); // Equation A4
     double R = pow((2.164*mY*mY + Q2)/(2.164*mY*mY),2.131) - 1.0;
     double gammaT = alpha_em/(2*M_PI)*(1.0+pow(1.0-y,2))/(y*Q2);
-
+    /*    if(_Eg < 60)
+      {
+	cout << "Successful _Eg < 60 " << endl;
+	return 60;
+      }
+    */
     // Step 5.) do/(dQ2 dW2 dt) --> dW2/dy do/(dQ2 dW2 dt) --> do/(dQ2 dy dt) --> do/dt 
-    double dW2dy = 2.0 * _Ee * mp;
-    return volume * (1.0 + epsilon * R) * dipole * gammaT / dW2dy;
+    //    double dW2dy = 2.0 * _Ee * mp;
+    // Removed this step as of 5/26/2021 ***
+    //    cout << "Factor1 = " << volume * (1.0 + epsilon * R) * dipole * gammaT << endl;
+    return volume * (1.0 + epsilon * R) * dipole * gammaT;
   }
 
   double VirtualPhoton(const TLorentzVector * ki, TLorentzVector * kf){
@@ -616,7 +656,6 @@ namespace GENERATE{
   /* Upsilon1S productions */
   double Upsilon1SElectroproduction(TLorentzVector * ki, TLorentzVector *kf){
     //ki: e, N; kf: e', Psi2S, N'
-
     double weight1 = VirtualPhoton_new(ki, kf);//Generate scattered electron
     if (weight1 == 0) return 0;
     double mp = ki[1].M();
@@ -624,15 +663,20 @@ namespace GENERATE{
     double W = Pout.M();
     double W2 = W * W;
     double Q2 = -(kf[1]*kf[1]);
-    //    cout << "Q2 = " << Q2 << endl;
     double Mup = PARTICLE::upsilon1S.RandomM();
     if (W < Mup + Mp)
       {
-	cout << "Event failed in Upsilon1SElectroproduction | W = " << W << " < mp + Mup = " << Mp + Mup << endl;
 	return 0; //below the threshold
       }
     // Step 1.) Randomly generate "t"
-    double t = random.Uniform(trange[0],trange[1]);
+    //    trange[0] = UPSILONMODEL::tmax(Mup,mp,W);
+    trange[1] = UPSILONMODEL::tmax(Mup,mp,W);
+    double B = UPSILONMODEL::B(Mup,mp,W);
+    double t = 1.0;
+    while((t
+    double t = -random.Exp(1/B);
+
+    //    double t = random.Uniform(trange[0],trange[1]);
     // Step 2.) Calculate beta s.t. we boost into the q + N rest C.O.M frame
     TVector3 beta = Pout.BoostVector();
     // Step 2.5) Calculate axis of rotation such that final state particles are created in a frame where "p" lies along the z-axis
@@ -641,8 +685,6 @@ namespace GENERATE{
     TVector3 direction(1.0,0,0);
     direction.SetPhi(ki[1].Phi());
     direction.SetTheta(ki[1].Theta()/2.0);
-    //    ki[1].Print();
-    //    kf[1].Print();
     kf[1].Boost(beta);
     ki[1].Boost(beta);
     // Step 3.) Calculate the final state particles in the C.O.M frame
@@ -661,13 +703,10 @@ namespace GENERATE{
       (t + 2 * Et_cm * Er_cm - mp * mp - Mp * Mp) / (2 * Pt_cm * Pr_cm);
     if(ctheta_cm>1.0||ctheta_cm<-1.0)
       {
-	
-	//	cout << " ctheta_cm = " << ctheta_cm << " out of bounds [-1,1] | DEBUG | t = " << t << endl;
-	//	cout << " (E,p,mp) = (" << Et_cm << "," << Pt_cm << "," << mp << ")" << endl;
-	//	cout << " (E',p',mp') = (" << Er_cm << "," << Pr_cm << "," << Mp << ")" << endl;
-	//	cout << " (Ev,pv,mv) = (" << Ev_cm << "," << Pv_cm << "," << Mup << ")" << endl;
-	//	cout << " Numerator = t + " << 2 * Et_cm * Er_cm - mp * mp - Mp * Mp << endl;
-	//	cout << " Denominator = " << 2 * Pt_cm * Pr_cm << endl;
+	//	if(weight1==60)
+	//	  {
+	//	    cout << Form("Dead at B | W = %.2f | Q2 = %.2f | t = %.2f |" , sqrt(W2), Q2, t) << endl;
+	//	  }
 	return 0;
       }
     const double theta_cm = std::acos(ctheta_cm);
@@ -688,7 +727,6 @@ namespace GENERATE{
     double volume = trange[1]-trange[0];
     // Need to include flux factor because of moving target in this frame? //
     double weight2 = UPSILONMODEL::dSigmaY1S(W,t) * volume;
-
     return weight1*weight2;
   }
   /* Psi2S productions */
