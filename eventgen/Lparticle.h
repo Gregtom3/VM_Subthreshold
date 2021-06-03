@@ -234,7 +234,8 @@ namespace PARTICLE{
   Lparticle Sigmac2520$pp(2.51841, 14.78e-3);
   Lparticle Sigmac2520$p(2.5175, 17.0e-3);
   Lparticle Sigmac2520$0(2.51848, 15.3e-3);
-  
+  //bottomonium
+  Lparticle upsilon1S(9.46030, 0.00005402);
 }
 
 
