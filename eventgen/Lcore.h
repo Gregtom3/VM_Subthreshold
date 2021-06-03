@@ -197,6 +197,11 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
   const double b_inel = 3.53;
   const double a_inel = 1.2;
 
+  const double f = 0.238;
+  const double alpha = 1./137.;
+  const double e = sqrt(4.0*M_PI*alpha); // electric charge
+
+  
   const double epsilon = 0.0001;
   const double numax = 2000000.0; // maximum bound for infinite integration 
 
@@ -213,31 +218,31 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
   // gsl workspace for integration of Dispersion integral
   gsl_integration_workspace * _w = gsl_integration_workspace_alloc(2048);
   gsl_function _F;
+
+
+  // Event variables
+  double eventb0=0.0;
+  double eventB=0.0;
+  double eventA=0.0;
   
   double ImaginaryT(const double s){
     double nu = 0.5*(s-Mp*Mp-Mv*Mv);
-
     double Disc_el = 0.0;
     double Disc_inel = 0.0;
-
     if(nu>nu_el)
       Disc_el = C_el*pow(1.0-nu_el/nu,b_el)*pow(nu/nu_el,a_el);
     if(nu>nu_inel)
       Disc_inel = C_inel*pow(1.0-nu_inel/nu,b_inel)*pow(nu/nu_inel,a_inel);
-    
     return Disc_el+Disc_inel;
   }
 
   double ImaginaryT_nu(const double nu){
-
     double Disc_el = 0.0;
     double Disc_inel = 0.0;
-
     if(nu>nu_el)
       Disc_el = C_el*pow(1.0-nu_el/nu,b_el)*pow(nu/nu_el,a_el);
     if(nu>nu_inel)
       Disc_inel = C_inel*pow(1.0-nu_inel/nu,b_inel)*pow(nu/nu_inel,a_inel);
-    
     return Disc_el+Disc_inel;
   }
 
@@ -266,7 +271,6 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
     double tmax = par[1];
     double sigma = par[2];
     double A = par[3];
-    
     return (b - A*exp(b*tmax)/sigma + A*exp(b*tmin)/sigma);
   }
   double (*dSigmaY1S)(const double, const double); // W , t
@@ -286,38 +290,11 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
     double qgp = (s-Mp*Mp)/(2.0*sqrt(s));
     return Mv * Mv -2.0 * qgp * ( sqrt ( qvp * qvp + Mv * Mv ) + qvp ); // more negative
   }
-  double dSigmaY1S_v1(const double W, const double t){
-    double s = W*W;
-    double nu = 0.5*(s-Mp*Mp-Mv*Mv);
-    double f = 0.238;
-    double alpha = 1./137.;
-    double e = sqrt(4.0*M_PI*alpha); // electric charge
-    double qvp = sqrt((0.25/s)*(s-pow(Mv+Mp,2))*(s-pow(Mv-Mp,2)));
-    double qgp = (s-Mp*Mp)/(2.0*sqrt(s));
-    double coeff = pow(e*f/Mv,2)/(64.0*M_PI*s*qgp*qgp);
-    double ReT = RealT(s);
-    double ImT = ImaginaryT(s);
-    double dodt_t0 = coeff * (ReT*ReT + ImT*ImT) * 3.89e5; // units nb/GeV^2
-    double A = dodt_t0;
-    double tmin_ = tmin(Mv,Mp,W);
-    double tmax_ = tmax(Mv,Mp,W);
-   
-    double sigma_el = (std::pow(e * f / Mv, 2) * 1 / (2 * W * qgp) *
-		       (qvp / qgp) * C_el *
-		       std::pow(1 - nu_el / nu, b_el) *
-		       std::pow(nu / nu_el, a_el) * khbarc2); // units nb
-
-    _f1->SetParameters(tmin_,tmax_,sigma_el,A);
-    double B = _f1->GetX(0.0,0.5,10); // units 1/GeV^2
-    return A * exp(B*t); // units nb/GeV^2
-  }
-  double B(const double Mv, const double Mp, const double W)
+    
+  void set_B(const double Mv, const double Mp, const double W)
   {
     double s = W*W;
     double nu = 0.5*(s-Mp*Mp-Mv*Mv);
-    double f = 0.238;
-    double alpha = 1./137.;
-    double e = sqrt(4.0*M_PI*alpha); // electric charge
     double qvp = sqrt((0.25/s)*(s-pow(Mv+Mp,2))*(s-pow(Mv-Mp,2)));
     double qgp = (s-Mp*Mp)/(2.0*sqrt(s));
     double coeff = pow(e*f/Mv,2)/(64.0*M_PI*s*qgp*qgp);
@@ -335,13 +312,57 @@ namespace UPSILONMODEL{//Model of Upsilon (1S) production
 
     _f1->SetParameters(tmin_,tmax_,sigma_el,A);
     double B = _f1->GetX(0.0,0.5,10); // units 1/GeV^2
+    // Set the event A and event B
+    eventA = A;
+    eventB = B;
+  }
 
-    return B;
+  void set_b0(const double Mv, const double Mp)
+  {
+    double W = (Mv+Mp)*(1.05);
+    double s = W*W;
+    double nu = 0.5*(s-Mp*Mp-Mv*Mv);
+    double qvp = sqrt((0.25/s)*(s-pow(Mv+Mp,2))*(s-pow(Mv-Mp,2)));
+    double qgp = (s-Mp*Mp)/(2.0*sqrt(s));
+    double coeff = pow(e*f/Mv,2)/(64.0*M_PI*s*qgp*qgp);
+    double ReT = RealT(s);
+    double ImT = ImaginaryT(s);
+    double dodt_t0 = coeff * (ReT*ReT + ImT*ImT) * 3.89e5; // units nb/GeV^2
+    double A = dodt_t0;
+    double tmin_ = tmin(Mv,Mp,W);
+    double tmax_ = tmax(Mv,Mp,W);
+   
+    double sigma_el = (std::pow(e * f / Mv, 2) * 1 / (2 * W * qgp) *
+		       (qvp / qgp) * C_el *
+		       std::pow(1 - nu_el / nu, b_el) *
+		       std::pow(nu / nu_el, a_el) * khbarc2); // units nb
+
+    _f1->SetParameters(tmin_,tmax_,sigma_el,A);
+    double b0 = _f1->GetX(0.0,0.5,10); // units 1/GeV^2
+    // Set the event b0
+    eventb0 = b0;
+  }
+
+
+  double dSigmaY1S_v1(const double W, const double t){
+    set_B(Mv,Mp,W);
+    set_b0(Mv,Mp);
+    return eventA * exp(eventB*t); // units nb/GeV^2
+  }
+  double dSigmaY1S_v2(const double W, const double t){
+    double jac = exp(-eventb0*t)/eventb0;
+    return eventA*exp(eventB*t) * jac; // dsigma_dexp_b0t 
   }
   int SetModel(const char * model = "v1"){
     if (strcmp(model, "v1") == 0)
       {
 	dSigmaY1S = &dSigmaY1S_v1;
+	_f1 = new TF1("B_func",B,0,10,4);
+	_F.function = &dispersion_integral;
+      }
+    else if (strcmp(model, "v2") == 0)
+      {
+	dSigmaY1S = &dSigmaY1S_v2;
 	_f1 = new TF1("B_func",B,0,10,4);
 	_F.function = &dispersion_integral;
       }
@@ -668,18 +689,19 @@ namespace GENERATE{
       {
 	return 0; //below the threshold
       }
-    // Step 1.) Randomly generate "t"
-    //    trange[0] = UPSILONMODEL::tmax(Mup,mp,W);
+    // Step 1.) Set & Get the b0 & B for the event
+    UPSILONMODEL::set_B(Mup,mp,W);
+    UPSILONMODEL::set_b0(Mup,mp);
+    double B = UPSILONMODEL::eventB;
+    double b0 = UPSILONMODEL::eventb0;
+    // Step 2.) Calculate the kinematically allowed trange
+    trange[0] = UPSILONMODEL::tmin(Mup,mp,W);
     trange[1] = UPSILONMODEL::tmax(Mup,mp,W);
-    double B = UPSILONMODEL::B(Mup,mp,W);
-    double t = 1.0;
-    while((t
-    double t = -random.Exp(1/B);
-
-    //    double t = random.Uniform(trange[0],trange[1]);
-    // Step 2.) Calculate beta s.t. we boost into the q + N rest C.O.M frame
+    // Step 3.) Generate a t value within the range from an exponential distribution
+    double t = (1.0/b0)*std::log(random.Uniform(exp(b0*trange[0]),1.0));
+    // Step 4.) Calculate beta s.t. we boost into the q + N rest C.O.M frame
     TVector3 beta = Pout.BoostVector();
-    // Step 2.5) Calculate axis of rotation such that final state particles are created in a frame where "p" lies along the z-axis
+    // Step 4.5) Calculate axis of rotation such that final state particles are created in a frame where "p" lies along the z-axis
     ki[1].Boost(-beta);
     kf[1].Boost(-beta);
     TVector3 direction(1.0,0,0);
@@ -687,7 +709,7 @@ namespace GENERATE{
     direction.SetTheta(ki[1].Theta()/2.0);
     kf[1].Boost(beta);
     ki[1].Boost(beta);
-    // Step 3.) Calculate the final state particles in the C.O.M frame
+    // Step 5.) Calculate the final state particles in the C.O.M frame
     // From lAger's code
     // t --> "target"
     // r --> "recoil"
@@ -698,15 +720,11 @@ namespace GENERATE{
     const double Pr_cm = sqrt(Er_cm * Er_cm - Mp*Mp);
     const double Ev_cm = (W2 + Mup*Mup - Mp*Mp) / (2. * W);
     const double Pv_cm = sqrt(Ev_cm * Ev_cm - Mup*Mup);
-    // Step 4.) From the generated "t", get the "theta" of the scattered p in this frame
+    // Step 6.) From the generated "t", get the "theta" of the scattered p in this frame
     const double ctheta_cm =
       (t + 2 * Et_cm * Er_cm - mp * mp - Mp * Mp) / (2 * Pt_cm * Pr_cm);
     if(ctheta_cm>1.0||ctheta_cm<-1.0)
       {
-	//	if(weight1==60)
-	//	  {
-	//	    cout << Form("Dead at B | W = %.2f | Q2 = %.2f | t = %.2f |" , sqrt(W2), Q2, t) << endl;
-	//	  }
 	return 0;
       }
     const double theta_cm = std::acos(ctheta_cm);
@@ -715,16 +733,16 @@ namespace GENERATE{
     const double theta_cm2 = TMath::Pi() - theta_cm;
     const double ctheta_cm2 = std::cos(theta_cm2);
     const double stheta_cm2 = std::sin(theta_cm2);
-    // Step 5.) Set the VM and p' in this C.O.M frame
+    // Step 7.) Set the VM and p' in this C.O.M frame
     kf[1].SetXYZM(Pv_cm * stheta_cm2 * cos(phi_cm), Pv_cm * stheta_cm2 * sin(phi_cm), Pv_cm * ctheta_cm2, Mup);
     kf[2].SetXYZM(-Pr_cm * stheta_cm * cos(phi_cm), Pr_cm * stheta_cm * sin(-phi_cm), Pr_cm * ctheta_cm, Mp);
-    // Step 5.5) Rotate the VM and p' such that p is on the z-axis
+    // Step 7.5) Rotate the VM and p' such that p is on the z-axis
     kf[1].Rotate(M_PI,direction);
     kf[2].Rotate(M_PI,direction);
-    // Step 6.) Boost these particles back into the original frame
+    // Step 8.) Boost these particles back into the original frame
     kf[1].Boost(beta);
     kf[2].Boost(beta);
-    double volume = trange[1]-trange[0];
+    double volume = exp(b0*trange[1])-exp(b0*trange[0]);
     // Need to include flux factor because of moving target in this frame? //
     double weight2 = UPSILONMODEL::dSigmaY1S(W,t) * volume;
     return weight1*weight2;
