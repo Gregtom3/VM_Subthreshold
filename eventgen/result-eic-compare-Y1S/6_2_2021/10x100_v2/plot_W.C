@@ -1,0 +1,110 @@
+int plot_W()
+{
+  // ----------------------------------------------
+  // Get TFiles and TTrees
+  // ----------------------------------------------
+
+  TFile *f1 = new TFile("ep.root","READ");
+  TFile *f2 = new TFile("eD.root","READ");
+  TTree *t1 = (TTree*)f1->Get("tree");
+  TTree *t2 = (TTree*)f2->Get("tree");
+
+  // ----------------------------------------------
+  // Get number of simulations 
+  // ----------------------------------------------
+
+  int N = 0;
+  t1->SetBranchAddress("Nsim",&N);
+  t1->GetEntry(1);
+  
+  // ----------------------------------------------
+  // Set Luminosity 
+  // ----------------------------------------------
+
+  const double lumi = 100*pow(10,6); // 100 fb^-1
+  
+  // ----------------------------------------------
+  // Set BR
+  // ----------------------------------------------
+
+  const double BR = 2.38e-2;
+
+  // ----------------------------------------------
+  //  Create TGraph for the cross section vs. W
+  // ----------------------------------------------
+
+  const int npoints = 20;
+  const double Wmin = 10;
+  const double Wmax = 15;
+  const double Wstep = (Wmax-Wmin)/(1.*npoints);
+  TGraph *tg1 = new TGraph(npoints);
+  TGraph *tg2 = new TGraph(npoints);
+  tg1->SetTitle("Upsilon Photoproduction at EIC (10x100 GeV)");
+  tg1->GetXaxis()->SetTitle("W [GeV]");
+  tg1->GetYaxis()->SetTitle("#sigma(#gamma+p --> #Upsilon + p') [nb]");
+  tg1->SetMarkerColor(kRed);
+  tg2->SetMarkerColor(kBlue);
+  tg1->SetLineColor(kRed);
+  tg2->SetLineColor(kBlue);
+  tg1->SetMarkerStyle(20);
+  tg2->SetMarkerStyle(20);
+  tg1->SetLineWidth(2);
+  tg2->SetLineWidth(2);
+  // ----------------------------------------------
+  //  Create dodt vs. t histograms
+  // ----------------------------------------------
+
+  TH1F *h1 = new TH1F("h1","",30,0,2.5);
+  TH1F *h2 = new TH1F("h2","",30,0,2.5);
+  const double tstep = h1->GetBinWidth(1);
+  
+  // ----------------------------------------------
+  //  Fill the Histograms for each incrementing
+  //  W range
+  // ----------------------------------------------
+
+  for(int i = 0 ; i < npoints ; i++)
+    {
+      h1->Reset(); h2->Reset();
+      double W1 = Wmin + i * Wstep;
+      double W2 = Wmin + (i+1) * Wstep;
+      double Wmid = W1 + (W2-W1)/2.0;
+      t1->Draw("-event.t_true>>h1",Form("event.weight_gamma_p*event.is_accept*(event.W_true>%f&&event.W_true<%f)",W1,W2),"goff");
+      t2->Draw("-event.t_true>>h2",Form("event.weight_gamma_p*event.is_accept*(event.W_true>%f&&event.W_true<%f)",W1,W2),"goff");
+      if(h1->GetEntries()>0.0)
+	{
+	  h1->Scale(1.0/(h1->GetEntries()*BR*tstep));
+	  double integral1 = h1->Integral();
+	  tg1->SetPoint(i,Wmid,integral1);
+	}
+      if(h2->GetEntries()>0.0)
+	{
+	  h2->Scale(1.0/(h2->GetEntries()*BR*tstep));
+	  double integral2 = h2->Integral();
+	  tg2->SetPoint(i,Wmid,integral2);
+	}
+    }
+  
+  // ----------------------------------------------
+  //  Create a TLegend
+  // ----------------------------------------------
+
+  TLegend *l = new TLegend(0.6,0.3,0.8,0.4);
+  l->SetTextSize(0.05);
+  l->AddEntry(tg1,"e+p","P");
+  l->AddEntry(tg2,"e+D","P");
+
+  // ----------------------------------------------
+  //  Create a TCanvas and plot
+  // ----------------------------------------------
+
+  TCanvas *c = new TCanvas("c","c",800,600);
+  gStyle->SetOptStat(0);
+  gPad->SetLogy();
+  tg1->GetXaxis()->SetRangeUser(9,16);
+  tg1->Draw("APC");
+  tg2->Draw("PC same");
+  l->Draw("same");
+  
+  return 0; 
+}
