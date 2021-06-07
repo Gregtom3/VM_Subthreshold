@@ -25,7 +25,7 @@ struct event{
 
 event myEvent;
 
-int electro_eic_P_condor(int Nsim, int Ntotalbatch, int Nbatch, double Ebeam, double Hbeam, 
+int electro_eic_P_condor(Long64_t Nsim, int Ntotalbatch, int Nbatch, double Ebeam, double Hbeam, 
 			 double ymin, double ymax, double Q2min, double Q2max){
 
 
@@ -64,7 +64,7 @@ int electro_eic_P_condor(int Nsim, int Ntotalbatch, int Nbatch, double Ebeam, do
   GENERATE::trange[1]  = tmax;//GeV^2
 
   // TTree Info
-  TFile * fall2 = new TFile(Form("P-%d-%d_%.0fx%.0f_Y_%.2f_%.2f_Q2_%.2f_%.2f/run%d.root",Nsim,Ntotalbatch,Ebeam,Hbeam,ymin,ymax,Q2min,Q2max,Nbatch),"RECREATE");
+  TFile * fall2 = new TFile(Form("P-%lld-%d_%.0fx%.0f_Y_%.2f_%.2f_Q2_%.2f_%.2f/run%d.root",Nsim,Ntotalbatch,Ebeam,Hbeam,ymin,ymax,Q2min,Q2max,Nbatch),"RECREATE");
   TTree * tree = new TTree("tree","");
   tree->SetDirectory(fall2);
 
@@ -102,7 +102,7 @@ int electro_eic_P_condor(int Nsim, int Ntotalbatch, int Nbatch, double Ebeam, do
   double beta = 0.0; // beta of the incoming proton
 
   for (Long64_t i = 0; i < Nsim/Ntotalbatch; i++){
-    if (i % (Nsim/10) == 0) cout << i/(Nsim/10)*10 << "%" << endl;
+    if (i % (Nsim/Ntotalbatch/10) == 0) cout << i/(Nsim/Ntotalbatch/10)*10 << "%" << endl;
 
     weight = 1.0;
 
