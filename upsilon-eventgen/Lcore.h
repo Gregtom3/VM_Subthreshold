@@ -634,16 +634,6 @@ namespace GENERATE{
     double dipole = pow((mY*mY)/(Q2+mY*mY),2.575); // Equation A4
     double R = pow((2.164*mY*mY + Q2)/(2.164*mY*mY),2.131) - 1.0;
     double gammaT = alpha_em/(2*M_PI)*(1.0+pow(1.0-y,2))/(y*Q2);
-    /*    if(_Eg < 60)
-      {
-	cout << "Successful _Eg < 60 " << endl;
-	return 60;
-      }
-    */
-    // Step 5.) do/(dQ2 dW2 dt) --> dW2/dy do/(dQ2 dW2 dt) --> do/(dQ2 dy dt) --> do/dt 
-    //    double dW2dy = 2.0 * _Ee * mp;
-    // Removed this step as of 5/26/2021 ***
-    //    cout << "Factor1 = " << volume * (1.0 + epsilon * R) * dipole * gammaT << endl;
     return volume * (1.0 + epsilon * R) * dipole * gammaT;
   }
 
