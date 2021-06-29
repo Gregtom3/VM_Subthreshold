@@ -36,7 +36,7 @@ double psi2S_o_23g(double * xx, double * p)
 TF2 *f_dodt_23g = new TF2("psi2S_dodt_23g_function",psi2S_dodt_23g,10,20,-10,0);
 TF1 *f_o_23g = new TF2("psi2S_o_23g_function",psi2S_o_23g,10,20);
 
-int plot_dodt_vs_Egamma()
+int plot_dodt_vs_Egamma_project()
 {
 
   int A = 1;
@@ -109,8 +109,8 @@ int plot_dodt_vs_Egamma()
   double Egamma_max = 12.8;
   double Egamma_mid = (Egamma_max+Egamma_min)/2.0;
 
-  tIn1->Draw("-(event.t-tmin)>>h_1",Form("weight_smear2*(Eg_true>%f&&Eg_true<%f)",Egamma_min,Egamma_max),"goff");
-  tIn2->Draw("-(event.t-tmin)>>h_2",Form("weight_smear2*is_accept_eOut*(Eg_true>%f&&Eg_true<%f)",Egamma_min,Egamma_max),"goff");
+  tIn1->Project("h_1","-(event.t-tmin)",Form("weight_smear2*(Eg_true>%f&&Eg_true<%f)",Egamma_min,Egamma_max));
+  tIn2->Project("h_2","-(event.t-tmin)",Form("weight_smear2*is_accept_eOut*(Eg_true>%f&&Eg_true<%f)",Egamma_min,Egamma_max));
 
   // ************************************************************* //
   // Get the nEvents for photo and electro per bin

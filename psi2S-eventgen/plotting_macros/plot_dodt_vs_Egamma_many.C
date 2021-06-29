@@ -38,7 +38,7 @@ TF1 *f_o_23g = new TF1("psi2S_o_23g_function",psi2S_o_23g,10.93,20);
 
 int plot_dodt_vs_Egamma_many()
 {
-  // gROOT->SetBatch(true);
+  gROOT->SetBatch(true);
   int A = 1;
   double eIn_E = 17.0;
   
@@ -132,7 +132,6 @@ int plot_dodt_vs_Egamma_many()
 
   for(int j = 0 ; j < n_Egamma; j++)
     {
-      if(j!=1) continue;
       double Egamma_min = Egamma_bottom + (j)*Egamma_step;
       double Egamma_max = Egamma_min + Egamma_step;
       double Egamma_mid = (Egamma_max+Egamma_min)/2.0;
@@ -324,6 +323,7 @@ int plot_dodt_vs_Egamma_many()
   latex.DrawLatexNDC(text_left,text_top-2*text_step,"50 days at 1.2e37/cm^{2}s");
   
   f_o_23g->Draw("C same");
+  c_photo->SaveAs("dodt_vs_Egamma_plots/c_photo.pdf");
 
   TCanvas *c_electro = new TCanvas("c_electro","c_electro",800,600);
   gPad->SetLogy();
@@ -334,7 +334,8 @@ int plot_dodt_vs_Egamma_many()
   latex.DrawLatexNDC(text_left,text_top-text_step,Form("e+%s #rightarrow e'+p'+#psi(2S) (e^{-}e^{+}) , #color[2]{#bf{Electroprodution}}",stringA.Data()));
   latex.DrawLatexNDC(text_left,text_top-2*text_step,"50 days at 1.2e37/cm^{2}s");
   f_o_23g->Draw("C same");
-  
+  c_electro->SaveAs("dodt_vs_Egamma_plots/c_electro.pdf");
+
   TCanvas *c_total = new TCanvas("c_total","c_total",800,600);
   gPad->SetLogy();
   tge_sigma[2]->Draw("AP");
@@ -344,6 +345,7 @@ int plot_dodt_vs_Egamma_many()
   latex.DrawLatexNDC(text_left,text_top-text_step,Form("e+%s #rightarrow e'+p'+#psi(2S) (e^{-}e^{+}) , #color[882]{#bf{Photo+Electro prodution}}",stringA.Data()));
   latex.DrawLatexNDC(text_left,text_top-2*text_step,"50 days at 1.2e37/cm^{2}s");
   f_o_23g->Draw("C same");
+  c_total->SaveAs("dodt_vs_Egamma_plots/c_total.pdf"); 
   return 0;
 }
 
