@@ -15,6 +15,8 @@ struct event{
   double W_true;
   double W2_true;
   double t_true;
+  double factor;
+  double factor_true;
 };
 
 event myEvent;
@@ -32,9 +34,7 @@ double CalcEg(const TLorentzVector P){
   double Eg = (pow(P.E() - Md, 2) - pow(P.P(), 2) - Mn * Mn) / (2.0 * (P.E() - P.Pz() - Md));
   return Eg;
 }
-int photo_solid_study_psi2S(){
-
-  bool do_deuterium = false;
+int photo_solid_study_psi2S(double Ebeam = 11, bool do_deuterium = false){
 
   TString stringA;
   if(do_deuterium)
@@ -45,9 +45,7 @@ int photo_solid_study_psi2S(){
 
   // Set simulation
   gRandom->SetSeed(0);
-  Long64_t Nsim = 1000000;
-  double Ebeam = 11; // GeV
-
+  Long64_t Nsim = 5000000;
 
   // Electron beam energy and luminosity
   //  double Ebeam = 11;//GeV
@@ -95,6 +93,7 @@ int photo_solid_study_psi2S(){
   TLorentzVector ki[2], kf[4], q;
   ki[0].SetXYZM(0, 0, Ebeam, PARTICLE::e.M());
   double weight = 0.0;
+  double weight_lumi = 0.0;
   double weight_smear = 0.0;
   double weight_smear2 = 0.0;
 
@@ -104,6 +103,7 @@ int photo_solid_study_psi2S(){
 
   double Eg=0.0;
   double Eg_smear=0.0;
+  double Eg_true=0.0;
   
   TLorentzVector *eIn = new TLorentzVector();
   TLorentzVector *pIn = new TLorentzVector();
@@ -125,19 +125,20 @@ int photo_solid_study_psi2S(){
   double is_accept_eMinusOut = 0;
   // Add TTree Branches
   tree->Branch("event", &myEvent.x,
-	       "x/D:y/D:Q2/D:W/D:W2/D:t/D:x_true/D:y_true/D:Q2_true/D:W_true/D:W2_true/D:t_true/D");
-  tree->Branch("eIn","TLorentzVector",&eIn);
-  tree->Branch("pIn","TLorentzVector",&pIn);
-  tree->Branch("pOut","TLorentzVector",&pOut);
-  tree->Branch("ePlusOut","TLorentzVector",&ePlusOut);
-  tree->Branch("eMinusOut","TLorentzVector",&eMinusOut);
-  tree->Branch("pOutSmear","TLorentzVector",&pOutSmear);
-  tree->Branch("ePlusOutSmear","TLorentzVector",&ePlusOutSmear);
-  tree->Branch("eMinusOutSmear","TLorentzVector",&eMinusOutSmear);
-  tree->Branch("vm","TLorentzVector",&vm);
-  tree->Branch("gamma","TLorentzVector",&gamma);
-  tree->Branch("vmSmear","TLorentzVector",&vmSmear);
+	       "x/D:y/D:Q2/D:W/D:W2/D:t/D:x_true/D:y_true/D:Q2_true/D:W_true/D:W2_true/D:t_true/D:factor/D:factor_true/D");
+  // tree->Branch("eIn","TLorentzVector",&eIn);
+  //tree->Branch("pIn","TLorentzVector",&pIn);
+  //tree->Branch("pOut","TLorentzVector",&pOut);
+  //tree->Branch("ePlusOut","TLorentzVector",&ePlusOut);
+  //tree->Branch("eMinusOut","TLorentzVector",&eMinusOut);
+  //tree->Branch("pOutSmear","TLorentzVector",&pOutSmear);
+  //tree->Branch("ePlusOutSmear","TLorentzVector",&ePlusOutSmear);
+  //tree->Branch("eMinusOutSmear","TLorentzVector",&eMinusOutSmear);
+  //tree->Branch("vm","TLorentzVector",&vm);
+  //tree->Branch("gamma","TLorentzVector",&gamma);
+  //tree->Branch("vmSmear","TLorentzVector",&vmSmear);
   tree->Branch("weight",&weight,"Double/D");
+  tree->Branch("weight_lumi",&weight_lumi,"Double/D");
   tree->Branch("weight_smear",&weight_smear,"Double/D");
   tree->Branch("weight_smear2",&weight_smear2,"Double/D");
   tree->Branch("is_accept_pOut",&is_accept_pOut,"Double/D");
@@ -145,6 +146,7 @@ int photo_solid_study_psi2S(){
   tree->Branch("is_accept_eMinusOut",&is_accept_eMinusOut,"Double/D");
   tree->Branch("Eg",&Eg,"Double/D");
   tree->Branch("Eg_smear",&Eg_smear,"Double/D");
+  tree->Branch("Eg_true",&Eg_true,"Double/D");
   tree->Branch("is_sub",&is_sub,"Sub/I");
   tree->Branch("Nsim",&Nsim,"Sims/I");
   
@@ -157,7 +159,6 @@ int photo_solid_study_psi2S(){
     if (i % (Nsim/10) == 0) cout << i/(Nsim/10)*10 << "%" << endl;
     weight = GENERATE::BremsstrahlungPhoton(&ki[0], kmin, kmax, Ebeam) * 1.95 / 2;
     weight *= GENERATE::GetNucleon(&ki[1]);
-    
     weight *= GENERATE::Event_gN2Nee_Psi2S(ki, kf); 
     
     if (weight > 0.0){
@@ -204,6 +205,8 @@ int photo_solid_study_psi2S(){
      
       // Calculate unsmeared quantities
       Eg = CalcEg(kf[0]+kf[1]+kf[2]);
+      Eg_true = q.E();
+
       vm=kf[1]+kf[2];
 
       // Calculate smeared quantities
@@ -216,10 +219,14 @@ int photo_solid_study_psi2S(){
       weight_smear = weight*DETECTOR::SmearSoLID(_pOutSmear, "p")*DETECTOR::SmearSoLID(_ePlusOutSmear, "e+")*DETECTOR::SmearSoLID(_eMinusOutSmear, "e-");
       weight_smear2 = weight_smear*lumi*time/Nsim;
       
-      weight = weight*lumi*time/Nsim;
+      weight_lumi = weight*lumi*time/Nsim;
       Eg_smear = CalcEg(_ePlusOutSmear+_eMinusOutSmear+_pOutSmear);
       vmSmear=_ePlusOutSmear+_eMinusOutSmear;
 
+
+      myEvent.factor = GENERATE::BremsstrahlungPhoton(&ki[0], kmin, kmax, Ebeam) * 1.95 / 2;
+      myEvent.factor_true = GENERATE::BremsstrahlungPhoton(&ki[0], kmin, kmax, Ebeam) * 1.95 / 2;
+      
       tree->Fill();
       
     }
