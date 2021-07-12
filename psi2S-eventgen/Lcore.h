@@ -186,7 +186,7 @@ namespace PSI2SMODEL{//Model of Psi2S production (based on 2+3g model with a (x0
   double (*dSigmaPsi2S)(const double, const double);
 
   double dSigmaPsi2S_2g(const double x, const double t){//Brodsky et al. PLB498 (2001) 23-28
-    double N2g = 1818.89; // <---- Needs to be changed
+    double N2g = 1569.43; // <---- Needs to be changed
     double v = 1.0 / (16.0 * M_PI);
     double R = 1.0;
     double M = 3.686097;//GeV
@@ -195,8 +195,8 @@ namespace PSI2SMODEL{//Model of Psi2S production (based on 2+3g model with a (x0
   }
   
   double dSigmaPsi2S_23g(const double x, const double t){//Brodsky et al. PLB498 
-    double N2g = 1818.89;
-    double N3g = 809.949;
+    double N2g = 1569.43;
+    double N3g = 698.868;
     double v = 1.0 / (16.0 * M_PI);
     double R = 1.0;
     double M = 3.686097;//GeV
@@ -315,6 +315,13 @@ namespace GENERATE{
   /* Bremsstrahlung photon */
 
   int fail = 0;
+
+  // Weights
+  double WEIGHT_JACOBIAN = 0.0;
+  double WEIGHT_NUCLEON_FLUX = 0.0;
+  double WEIGHT_PHOTON_FLUX = 0.0;
+  double WEIGHT_DODT = 0.0;
+  double WEIGHT_DECAY = 0.0;
   
   double Bremsstrahlung(const double * y, const double * par){//ds/dy approximate expression
     //E0: electron beam energy; k: photon energy
@@ -332,7 +339,8 @@ namespace GENERATE{
     double ymax = kmax / E;
     double y = TF_fBremsstrahlung->GetRandom(ymin, ymax);
     q[0].SetXYZT(0.0, 0.0, y * E, y * E);
-    return 0.01 * (4.0 / 3.0 * log(ymax / ymin) - 4.0 / 3.0 * (ymax - ymin) + 1.0 / 2.0 * (ymax * ymax - ymin * ymin));
+    WEIGHT_PHOTON_FLUX = 0.01 * (4.0 / 3.0 * log(ymax / ymin) - 4.0 / 3.0 * (ymax - ymin) + 1.0 / 2.0 * (ymax * ymax - ymin * ymin));
+    return WEIGHT_PHOTON_FLUX;
   }
 
   int SetBremsstrahlung(){
@@ -381,23 +389,6 @@ namespace GENERATE{
   double trange[2] = {-100.0, 0.0};
   double yrange[2] = {0.1,0.8};
 
-  double VirtualPhotonWeight(TLorentzVector ki0, TLorentzVector ki1, TLorentzVector kf0, TLorentzVector kf1)
-  {
-    //ki: e, N; kf: e', gamma
-    double m = PARTICLE::e.M();
-    double Q2 = - kf1 * kf1;//Q^2 = -q^2
-    double alpha_em = 1.0 / 137.0;
-    double couple = 4.0 * M_PI * alpha_em;
-    double flux = sqrt(pow(ki1 * kf1, 2) + Q2 * Mp * Mp) / sqrt(pow(ki0 * ki1, 2) - m * m * Mp * Mp);
-    double amp = (2.0 * Q2 - 4.0 * m * m) / (Q2 * Q2);
-    double phase = kf0.P() * kf0.P() / (2.0 * kf0.E() * pow(2.0 * M_PI, 3));
-    double volume = 2.0 * M_PI * abs(perange[1] - perange[0]) * abs(cthrange[1] - cthrange[0]);
-    double y = (ki1 * kf1) / (ki1 * ki0);
-    double gy = ki1.M() * sqrt(Q2) / (ki1 * ki0);
-    double epsilon = (1.0 - y - 0.25 * gy * gy) / (1.0 - y + 0.5 * y * y + 0.25 * gy * gy);
-    return couple * flux * amp * phase * volume / (1.0 - epsilon);
-  }
-
   double VirtualPhoton(const TLorentzVector * ki, TLorentzVector * kf){
     //ki: e, N; kf: e', gamma
     double m = PARTICLE::e.M();
@@ -422,18 +413,10 @@ namespace GENERATE{
     double y = (ki[1] * kf[1]) / (ki[1] * ki[0]);
     double gy = ki[1].M() * sqrt(Q2) / (ki[1] * ki[0]);
     double epsilon = (1.0 - y - 0.25 * gy * gy) / (1.0 - y + 0.5 * y * y + 0.25 * gy * gy);
-
-    return couple * flux * amp * phase * volume / (1.0 - epsilon);
+    WEIGHT_PHOTON_FLUX = couple * flux * amp * phase * volume / (1.0 - epsilon);
+    return WEIGHT_PHOTON_FLUX;
   }
 
-  double get_jacobian(TLorentzVector ki0, TLorentzVector ki1, TLorentzVector kf0, TLorentzVector kf1){
-    TLorentzVector Pout = ki0 + ki1;//Total
-    double W = Pout.M();
-    double k = sqrt(pow(W * W - kf0 * kf0 - kf1 * kf1, 2) - 4.0 * (kf0 * kf0) * (kf1 * kf1)) / (2.0 * W);//final state c.m. momentum
-    double q = sqrt(pow(W * W - ki0 * ki0 - ki1 * ki1, 2) - 4.0 * (ki0 * ki0) * (ki1 * ki1)) / (2.0 * W);//initial state c.m. momentum
-    double jac = 2.0 * k * q / (2.0 * M_PI);
-    return jac;
-  }
   /* Psi2S productions */
    double Psi2SPhotoproduction(const TLorentzVector * ki, TLorentzVector * kf){
     //ki: gamma, N; kf: Psi2S, N'
@@ -458,71 +441,13 @@ namespace GENERATE{
     double Jac = 2.0 * k * q / (2.0 * M_PI);
     double flux = sqrt(pow(ki[0] * ki[1], 2) - (ki[0] * ki[0]) * (ki[1] * ki[1])) / (Mp * ki[0].P());
     double cth = (sqrt(ki[0] * ki[0] + q * q) * sqrt(kf[0] * kf[0] + k * k) - ki[0] * kf[0]) / (q * k);
-    double weight = PSI2SMODEL::dSigmaPsi2S(x,t) * Jac * flux * volume;
+    WEIGHT_DODT =  PSI2SMODEL::dSigmaPsi2S(x,t);
+    WEIGHT_JACOBIAN = Jac * volume;
+    WEIGHT_NUCLEON_FLUX = flux;
+    double weight = WEIGHT_DODT * WEIGHT_JACOBIAN * WEIGHT_NUCLEON_FLUX;
     return weight;//GeV^-2
-    }
+   }
    
-   /*
- double Psi2SPhotoproduction(TLorentzVector * ki, TLorentzVector * kf){
-    //ki: gamma, N; kf: Psi2S, N'
-    TLorentzVector Pout = ki[0] + ki[1];//Total
-    double W = Pout.M();
-    double Mpsi2S = PARTICLE::psi2S.RandomM();
-    if (W < Mpsi2S + Mp)
-      {
-	fail++;
-	return 0;//below the threshold
-      }
-
-    // Get C.M. initial momentum
-    kf[0].SetXYZM(0,0,0,Mpsi2S);
-    kf[1].SetXYZM(0,0,0,Mp);
-
-    double q = sqrt(pow(W * W - ki[0] * ki[0] - ki[1] * ki[1], 2) - 4.0 * (ki[0] * ki[0]) * (ki[1] * ki[1])) / (2.0 * W);//initial state c.m. momentum
-    double k = sqrt(pow(W * W - kf[0] * kf[0] - kf[1] * kf[1], 2) - 4.0 * (kf[0] * kf[0]) * (kf[1] * kf[1])) / (2.0 * W);//final state c.m. momentum
-    
-    // Calculate the energies of the 4 particles in C.M frame
-    double E1 = sqrt(q*q + ki[0].M() * ki[0].M());
-    double E2 = sqrt(q*q + ki[1].M() * ki[1].M());
-    double E3 = sqrt(k*k + Mpsi2S * Mpsi2S);
-    double E4 = sqrt(k*k + kf[1].M() * kf[1].M());
-
-    // Find tmin and tmax 
-    double tmin = (ki[1].M()*ki[1].M() + kf[1].M()*kf[1].M() - 2*E2*E4 -  2 * q * k);
-    double tmax = (ki[1].M()*ki[1].M() + kf[1].M()*kf[1].M() - 2*E2*E4 +  2 * q * k);
-
-    // Generate a random t
-    double t = random.Uniform(tmin,tmax);
-
-    // Calculate the scattering angle between N and N'
-    double cth = (t - ki[1].M()*ki[1].M() - kf[1].M()*kf[1].M() + 2*E2*E4)/(2.0*q*k);
-    double sth = sqrt(1.0-cth*cth);
-    double phi = random.Uniform(0,2*M_PI);
-
-    // Boost "N"  into the C.M frame
-    TVector3 beta = (ki[0]+ki[1]).BoostVector();
-    ki[1].Boost(-beta);
-    // Find the direction in which the 3-momentum of "N" points in C.M. frame
-    TVector3 direction(1.0,0,0);
-    direction.SetPhi(ki[1].Phi());
-    direction.SetTheta(ki[1].Theta()/2.0);
-    // Assuming "N" points along z-axis, get "N'"
-    kf[1].SetXYZM(k * sth * cos(phi), k * sth * sin(phi), k * cth, Mp);
-    // Rotate "N'" such that it aligns with true "N" axis in C.M. frame
-    kf[1].Rotate(M_PI,direction);
-    // Boost out of C.M. frame
-    ki[1].Boost(beta);
-    kf[1].Boost(beta);
-
-    // Calculate lab frame Psi2S
-    kf[0]=ki[0]+ki[1]-kf[1];
-
-    double x = (2.0 * Mp * Mpsi2S + Mpsi2S * Mpsi2S) / (W * W - Mp * Mp);
-    double flux = sqrt(pow(ki[0] * ki[1], 2) - (ki[0] * ki[0]) * (ki[1] * ki[1])) / (Mp * ki[0].P());
-    double weight = PSI2SMODEL::dSigmaPsi2S(x,t);
-    return weight;//GeV^-2
-  }
-   */
 
    double Psi2SElectroproduction(TLorentzVector * ki, TLorentzVector * kf){
     //ki: e, N; kf: e', Psi2S, N'
@@ -551,7 +476,8 @@ namespace GENERATE{
     double r = 0.0;
     double wth = 3.0 / 4.0 * (1.0 + r + (1.0 - 3.0 * r) * pow(cth,2));
     double branch = 7.93e-3;//Branch ratio to e+e- (Psi_2S)
-    return weight * wth * branch;
+    WEIGHT_DECAY = wth * branch;
+    return weight * WEIGHT_DECAY;
   }
   
   double Event_eN2eNee_Psi2S(TLorentzVector * ki, TLorentzVector * kf){
@@ -578,7 +504,8 @@ namespace GENERATE{
     double r = epsilon * R / (1.0 + epsilon * R);
     double wth = 3.0 / 4.0 * (1.0 + r + (1.0 - 3.0 * r) * pow(cth,2));
     double branch = 7.93e-3;//Branch ratio to e+e- (Psi_2S)
-    return weight * wth * branch;
+    WEIGHT_DECAY = wth * branch;
+    return weight * WEIGHT_DECAY;
   }
 
 
