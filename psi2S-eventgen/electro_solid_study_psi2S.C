@@ -58,7 +58,7 @@ double CalcEg(const TLorentzVector P){
   double Eg = (pow(P.E() - Md, 2) - pow(P.P(), 2) - Mn * Mn) / (2.0 * (P.E() - P.Pz() - Md));
   return Eg;
 }
-int electro_solid_study_psi2S(double Ebeam = 17.2, bool do_deuterium = false, Long64_t Nsim = 100000000, TString output_dir = NULL){
+int electro_solid_study_psi2S(double Ebeam = 17.2, bool do_deuterium = false, Long64_t Nsim = 100000000, TString output_dir = ""){
 
   
   TString stringA;
@@ -111,10 +111,10 @@ int electro_solid_study_psi2S(double Ebeam = 17.2, bool do_deuterium = false, Lo
 
   // TTree Info
   TString output_dir_save;
-  if(output_dir.IsNull())
+  if(output_dir.IsWhitespace())
     output_dir_save = Form("result-electro-psi2S/%s_solid_electro_%.1fGeV.root",stringA.Data(),Ebeam);
   else
-    output_dir_save = output_dir;
+    output_dir_save = Form("%s/%s_solid_electro_%.1fGeV.root",output_dir.Data(),stringA.Data(),Ebeam);
   
   TFile * fall2 = new TFile(output_dir_save, "RECREATE");
   TTree * tree = new TTree("tree","");
