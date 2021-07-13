@@ -4,7 +4,7 @@ int plot_efficiency()
   
   // ****************************************************** //
   int A = 2;
-  double beamE = 17;
+  double beamE = 11;
   // ****************************************************** //
   TFile *fIn[2];
   TString nuc = "";
@@ -52,9 +52,9 @@ int plot_efficiency()
   TGraph *tEvents_Acc_4fold[2];
   
   TCanvas *c[2];
-  double Emin = 9.5;
-  double Emax = 17;
-  int N = 30;
+  double Emin = 7;
+  double Emax = 11;
+  int N = 25;
 
  TLatex latex;
  latex.SetTextSize(0.04);
@@ -160,20 +160,20 @@ int plot_efficiency()
       line[m]->SetLineStyle(9);
       line[m]->SetLineColor(923);
       line[m]->SetLineWidth(2);
-      line[m]->DrawLine(10.92,0.0001,10.92,1);
+      line[m]->DrawLine(8.2,0.0001,8.2,1);
       hEvents_Acc_2fold[m]->GetXaxis()->SetLimits(Emin,Emax);
       hEvents_Acc_3fold_p[m]->Draw("E5 same");
 
       if(m==0)
 	{
 	  legend[m]=new TLegend(0.5589,0.27748,0.918546,0.401);
-	  latex.DrawLatexNDC(0.16,0.85,Form("#bf{SoLID Simulation} e + %s #bf{#color[4]{photoproduction}} of #psi'(e^{-}e^{+})", nuc.Data()));
+	  latex.DrawLatexNDC(0.16,0.85,Form("#bf{SoLID Simulation} e + %s #bf{#color[4]{photoproduction}} of J/#psi(e^{-}e^{+})", nuc.Data()));
 	  latex.DrawLatexNDC(0.16,0.805,Form("50 days at 1.2e37cm^{-2}s^{-1} | %.1f GeV Beam", beamE));
 	}
       else if(m==1)
 	{
 	  legend[m]=new TLegend(0.5325,0.157,0.772,0.33);
-	  latex.DrawLatexNDC(0.16,0.85,Form("#bf{SoLID Simulation} e + %s #bf{#color[2]{electroproduction}} of #psi'(e^{-}e^{+})", nuc.Data()));
+	  latex.DrawLatexNDC(0.16,0.85,Form("#bf{SoLID Simulation} e + %s #bf{#color[2]{electroproduction}} of J/#psi(e^{-}e^{+})", nuc.Data()));
 	  latex.DrawLatexNDC(0.16,0.805,Form("50 days at 1.2e37cm^{-2}s^{-1} | %.1f GeV Beam", beamE));
 	}
       legend[m]->AddEntry(hEvents_Acc_2fold[m],"2-fold (e^{-}e^{+})","f");
