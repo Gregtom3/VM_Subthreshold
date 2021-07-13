@@ -97,13 +97,13 @@ int plot_dodt_nevents()
 	latex.DrawLatexNDC(0.18,0.86,Form("#bf{SoLID Simulation} #psi(2S) #bf{#color[4]{photoproduction}} , %.1f GeV Beam",beamE));
       else if(m==1) // electro
 	latex.DrawLatexNDC(0.18,0.86,Form("#bf{SoLID Simulation} #psi(2S) #bf{#color[2]{electroproduction}} , %.1f GeV Beam",beamE));
-      latex.DrawLatexNDC(0.18,0.82,"50 days at L=1.2e37 cm^{-2}s^{-1}");
-      latex.DrawLatexNDC(0.18,0.78,Form("%.2f < E_{#gamma} < %.2f",Emin,Emax));
+      latex.DrawLatexNDC(0.3,0.82,"50 days at L=1.2e37 cm^{-2}s^{-1}");
+      latex.DrawLatexNDC(0.3,0.78,Form("%.2f < E_{#gamma} < %.2f",Emin,Emax));
       // ----------------- Pad 2 ------------------ //
       c[m]->cd(2);
       c[m]->SetHighLightColor(0);
       gPad->SetLogy();
-      legend[m] = new TLegend(0.72,0.69,0.91,0.77);
+      legend[m] = new TLegend(0.57,0.69,0.91,0.77);
       hEvents_Acc[m]->SetLineColor(colors[m]);
       hEvents_Acc[m]->SetFillColor(colors[m]);
       hEvents_Acc[m]->SetFillStyle(3001);
@@ -117,16 +117,16 @@ int plot_dodt_nevents()
       hEvents[m]->GetYaxis()->SetRangeUser(.1,50000);
       hEvents_Acc[m]->Draw("hist same");
       hEvents_Acc[m]->Draw("E1 same");
-      legend[m]->AddEntry(hEvents[m],"Total","f");
-      legend[m]->AddEntry(hEvents_Acc[m],"Accepted","f");
+      legend[m]->AddEntry(hEvents[m],Form("Total (%.0f events)",hEvents[m]->Integral()),"f");
+      legend[m]->AddEntry(hEvents_Acc[m],Form("Accepted (%.0f events)", hEvents_Acc[m]->Integral()),"f");
       legend[m]->SetTextFont(42);
       legend[m]->Draw("same");
       if(m==0) // photo
 	latex.DrawLatexNDC(0.18,0.86,Form("#bf{SoLID Simulation} #psi(2S) #bf{#color[4]{photoproduction}} , %.1f GeV Beam",beamE));
       else if(m==1) // electro
 	latex.DrawLatexNDC(0.18,0.86,Form("#bf{SoLID Simulation} #psi(2S) #bf{#color[2]{electroproduction}} , %.1f GeV Beam",beamE));
-      latex.DrawLatexNDC(0.18,0.815,"50 days at L=1.2e37 cm^{-2}s^{-1}");
-      latex.DrawLatexNDC(0.18,0.775,Form("%.2f < E_{#gamma} < %.2f",Emin,Emax));
+      latex.DrawLatexNDC(0.3,0.815,"50 days at L=1.2e37 cm^{-2}s^{-1}");
+      latex.DrawLatexNDC(0.3,0.775,Form("%.2f < E_{#gamma} < %.2f",Emin,Emax));
     }
   return 0;
 }

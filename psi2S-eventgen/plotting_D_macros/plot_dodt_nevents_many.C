@@ -4,12 +4,12 @@ int plot_dodt_nevents_many()
   
   // ****************************************************** //
   int A = 1;
-  double beamE = 17.2;
+  double beamE = 12;
   double Elower = 9.5;
-  double Ehigher = 17;
+  double Ehigher = 12;
   // ****************************************************** //
   // Number of Egamma bins
-  int nE[2] = {5,3}; // photo, electro
+  int nE[2] = {6,3}; // photo, electro
                        // ALWAYS ASSUME nE_photo > nE_electro
   
   // Number of data points in dsigma/dt graphs
@@ -27,8 +27,8 @@ int plot_dodt_nevents_many()
   production[0]="photoproduction";
   production[1]="electroproduction";
 
-  fIn[0] = new TFile(Form("../result-photo-psi2S/p_solid_photo_%.1fGeV.root",beamE),"READ");
-  fIn[1] = new TFile(Form("../result-electro-psi2S/p_solid_electro_%.1fGeV.root",beamE),"READ");
+  fIn[0] = new TFile(Form("../data/%s-photo-5000000-%.0f/%s_solid_photo_%.1fGeV.root",nuc.Data(),beamE,nuc.Data(),beamE),"READ");
+  fIn[1] = new TFile(Form("../data/%s-electro-100000000-%.0f/%s_solid_electro_%.1fGeV.root",nuc.Data(),beamE,nuc.Data(),beamE),"READ");
   TTree *tIn[2];
   tIn[0] = (TTree*)fIn[0]->Get("tree");
   tIn[1] = (TTree*)fIn[1]->Get("tree");
@@ -125,13 +125,13 @@ int plot_dodt_nevents_many()
 	    latex.DrawLatexNDC(0.18,0.86,Form("#bf{SoLID Simulation} #psi(2S) #bf{#color[4]{photoproduction}} , %.1f GeV Beam",beamE));
 	  else if(m==1) // electro
 	    latex.DrawLatexNDC(0.18,0.86,Form("#bf{SoLID Simulation} #psi(2S) #bf{#color[2]{electroproduction}} , %.1f GeV Beam",beamE));
-	  latex.DrawLatexNDC(0.18,0.82,"50 days at L=1.2e37 cm^{-2}s^{-1}");
-	  latex.DrawLatexNDC(0.18,0.78,Form("%.2f < E_{#gamma} < %.2f",Emin,Emax));
+	  latex.DrawLatexNDC(0.3,0.82,"50 days at L=1.2e37 cm^{-2}s^{-1}");
+	  latex.DrawLatexNDC(0.3,0.78,Form("%.2f < E_{#gamma} < %.2f",Emin,Emax));
 	  // ----------------- Pad 2 ------------------ //
 	  c[m][M]->cd(2);
 	  c[m][M]->SetHighLightColor(0);
 	  gPad->SetLogy();
-	  legend[m][M] = new TLegend(0.72,0.69,0.91,0.77);
+	  legend[m][M] = new TLegend(0.57,0.69,0.91,0.77);
 	  hEvents_Acc[m][M]->SetLineColor(colors[m]);
 	  hEvents_Acc[m][M]->SetFillColor(colors[m]);
 	  hEvents_Acc[m][M]->SetFillStyle(3001);
@@ -145,16 +145,16 @@ int plot_dodt_nevents_many()
 	  hEvents[m][M]->GetYaxis()->SetRangeUser(.1,50000);
 	  hEvents_Acc[m][M]->Draw("hist same");
 	  hEvents_Acc[m][M]->Draw("E1 same");
-	  legend[m][M]->AddEntry(hEvents[m][M],"Total","f");
-	  legend[m][M]->AddEntry(hEvents_Acc[m][M],"Accepted","f");
+	  legend[m][M]->AddEntry(hEvents[m][M],Form("Total (%.0f events)",hEvents[m][M]->Integral()),"f");
+	  legend[m][M]->AddEntry(hEvents_Acc[m][M],Form("Accepted (%.0f events)", hEvents_Acc[m][M]->Integral()),"f");
 	  legend[m][M]->SetTextFont(42);
 	  legend[m][M]->Draw("same");
 	  if(m==0) // photo
 	    latex.DrawLatexNDC(0.18,0.86,Form("#bf{SoLID Simulation} #psi(2S) #bf{#color[4]{photoproduction}} , %.1f GeV Beam",beamE));
 	  else if(m==1) // electro
 	    latex.DrawLatexNDC(0.18,0.86,Form("#bf{SoLID Simulation} #psi(2S) #bf{#color[2]{electroproduction}} , %.1f GeV Beam",beamE));
-	  latex.DrawLatexNDC(0.18,0.815,"50 days at L=1.2e37 cm^{-2}s^{-1}");
-	  latex.DrawLatexNDC(0.18,0.775,Form("%.2f < E_{#gamma} < %.2f",Emin,Emax));
+	  latex.DrawLatexNDC(0.3,0.815,"50 days at L=1.2e37 cm^{-2}s^{-1}");
+	  latex.DrawLatexNDC(0.3,0.775,Form("%.2f < E_{#gamma} < %.2f",Emin,Emax));
 	  c[m][M]->SaveAs(Form("PLOTS_DODT_NEVENTS_MANY/%s_%s_%.1f_GeV_beam_%.2f_Egamma_%.2f.pdf",nuc.Data(),production[m].Data(),beamE,Emin,Emax));
 	}
     }
