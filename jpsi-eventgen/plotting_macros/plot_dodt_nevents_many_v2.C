@@ -1,15 +1,15 @@
 int plot_dodt_nevents_many_v2()
 {
-  //  gROOT->SetBatch(true);
+  gROOT->SetBatch(true);
   
   // ****************************************************** //
-  int A = 2;
+  int A = 1;
   double beamE = 11;
-  double Elower = 0;
-  double Ehigher = 8.2;
+  double Elower = 7;
+  double Ehigher = 11;
   // ****************************************************** //
   // Number of Egamma bins
-  int nE[2] = {1,1}; // photo, electro
+  int nE[2] = {4,3}; // photo, electro
                        // ALWAYS ASSUME nE_photo > nE_electro
   
   // Number of data points in dsigma/dt graphs
@@ -27,7 +27,7 @@ int plot_dodt_nevents_many_v2()
   production[0]="photoproduction";
   production[1]="electroproduction";
 
-  fIn[0] = new TFile(Form("../data/%s-photo-500000-%.0f/%s_solid_photo_%.1fGeV.root",nuc.Data(),beamE,nuc.Data(),beamE),"READ");
+  fIn[0] = new TFile(Form("../data/%s-photo-5000000-%.0f/%s_solid_photo_%.1fGeV.root",nuc.Data(),beamE,nuc.Data(),beamE),"READ");
   fIn[1] = new TFile(Form("../data/%s-electro-10000000-%.0f/%s_solid_electro_%.1fGeV.root",nuc.Data(),beamE,nuc.Data(),beamE),"READ");
   TTree *tIn[2];
   tIn[0] = (TTree*)fIn[0]->Get("tree");
@@ -142,9 +142,9 @@ int plot_dodt_nevents_many_v2()
 	  tge[m][M]->GetYaxis()->SetTitleOffset(1.2);
 	  tge[m][M]->GetXaxis()->SetLimits(0,8);
 	  if(m==0) // photo
-	    latex.DrawLatexNDC(0.185,0.86,Form("#bf{SoLID Simulation} e+%s #rightarrow p' + J/#psi(e^{-}e^{+}) + X #bf{#color[4]{photoproduction}}",nuc.Data()));
+	    latex.DrawLatexNDC(0.175,0.86,Form("#bf{SoLID Simulation} e+%s #rightarrow p' + J/#psi(e^{-}e^{+}) + X #bf{#color[4]{photoproduction}}",nuc.Data()));
 	  else if(m==1) // electro
-	    latex.DrawLatexNDC(0.185,0.86,Form("#bf{SoLID Simulation} e+%s #rightarrow p' + J/#psi(e^{-}e^{+}) + X #bf{#color[2]{electroproduction}}",nuc.Data()));
+	    latex.DrawLatexNDC(0.175,0.86,Form("#bf{SoLID Simulation} e+%s #rightarrow p' + J/#psi(e^{-}e^{+}) + X #bf{#color[2]{electroproduction}}",nuc.Data()));
 	  latex.DrawLatexNDC(0.25,0.82,Form("%.1f GeV Beam | 50 days at 1.2e37 cm^{-2}s^{-1}",beamE));
 	  latex.DrawLatexNDC(0.25,0.78,Form("%.2f < E_{#gamma} < %.2f",Emin,Emax));
 	  // ----------------- Pad 2 ------------------ //
