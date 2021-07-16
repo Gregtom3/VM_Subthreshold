@@ -1,0 +1,200 @@
+int plot_efficiency()
+{
+  //  gROOT->SetBatch(true);
+  
+  // ****************************************************** //
+  int A = 1;
+  double beamE = 11;
+  // ****************************************************** //
+  TFile *fIn[2];
+  TString nuc = "";
+  if(A==1)
+    nuc = "p";
+  else if(A==2)
+    nuc = "D";
+
+  TString production[2];
+  production[0]="photoproduction";
+  production[1]="electroproduction";
+
+  fIn[0] = new TFile(Form("../data/%s-photo-5000000-%.0f/%s_solid_photo_%.1fGeV.root",nuc.Data(),beamE,nuc.Data(),beamE),"READ");
+  fIn[1] = new TFile(Form("../data/%s-electro-100000000-%.0f/%s_solid_electro_%.1fGeV.root",nuc.Data(),beamE,nuc.Data(),beamE),"READ");
+  TTree *tIn[2];
+  tIn[0] = (TTree*)fIn[0]->Get("tree");
+  tIn[1] = (TTree*)fIn[1]->Get("tree");
+  
+  TStyle *myStyle = new TStyle("Style","My Style");
+  myStyle->SetOptStat(0);
+  myStyle->SetNdivisions(505);
+  myStyle->SetHistLineWidth(2);
+  myStyle->SetPadGridY(true);
+  myStyle->SetTitleXSize(0.045); 
+  myStyle->SetTitleYSize(0.045);
+  myStyle->SetPadBottomMargin(0.1);
+  myStyle->SetPadColor(0);
+  myStyle->SetCanvasColor(0);
+  myStyle->SetTitleYOffset(0.92);
+  myStyle->SetPadRightMargin(0.05);
+  myStyle->SetHistLineWidth(2);
+  myStyle->SetHistFillStyle(3001);
+  gROOT->SetStyle("Style");
+
+  TH1F *hEvents[2];
+  TH1F *hEvents_Acc_2fold[2];
+  TH1F *hEvents_Acc_3fold_e[2];
+  TH1F *hEvents_Acc_3fold_p[2];
+  TH1F *hEvents_Acc_4fold[2];
+
+  TGraph *tEvents[2];
+  TGraph *tEvents_Acc_2fold[2];
+  TGraph *tEvents_Acc_3fold_e[2];
+  TGraph *tEvents_Acc_3fold_p[2];
+  TGraph *tEvents_Acc_4fold[2];
+  
+  TCanvas *c[2];
+  double Emin = 7;
+  double Emax = 11;
+  int N = 25;
+
+ TLatex latex;
+ latex.SetTextSize(0.04);
+ latex.SetTextFont(42);
+ TLegend *legend[2];
+
+ TLine *line[2];
+
+  for(int m = 0 ; m < 2 ; m++)
+    {
+      hEvents[m] = new TH1F(Form("hEvents%d",m),"",N,Emin,Emax);
+      hEvents_Acc_2fold[m] = new TH1F(Form("hEvents_Acc_2fold%d",m),"",N,Emin,Emax);
+      hEvents_Acc_3fold_e[m] = new TH1F(Form("hEvents_Acc_3fold_e%d",m),"",N,Emin,Emax);
+      hEvents_Acc_3fold_p[m] = new TH1F(Form("hEvents_Acc_3fold_p%d",m),"",N,Emin,Emax);
+      hEvents_Acc_4fold[m] = new TH1F(Form("hEvents_Acc_4fold%d",m),"",N,Emin,Emax);
+
+      tEvents[m] = new TGraph(N);
+      tEvents_Acc_2fold[m] = new TGraph();
+      tEvents_Acc_3fold_p[m] = new TGraph();
+      tEvents_Acc_3fold_e[m] = new TGraph();
+      tEvents_Acc_4fold[m] = new TGraph();
+      if(m==0) // photo
+	{
+	  hEvents_Acc_2fold[m]->SetLineColor(860);
+	  hEvents_Acc_3fold_p[m]->SetLineColor(863);
+	 
+	  hEvents_Acc_2fold[m]->SetFillColor(860);
+	  hEvents_Acc_3fold_p[m]->SetFillColor(863);
+
+	  tEvents_Acc_2fold[m]->SetLineColor(860);
+	  tEvents_Acc_3fold_p[m]->SetLineColor(863);
+	 
+	  tEvents_Acc_2fold[m]->SetLineWidth(2);
+	  tEvents_Acc_3fold_p[m]->SetLineWidth(2);
+	}
+      else if(m==1) // electro
+	{
+	  hEvents_Acc_2fold[m]->SetLineColor(kMagenta);
+	  hEvents_Acc_3fold_p[m]->SetLineColor(kRed);
+	  hEvents_Acc_3fold_e[m]->SetLineColor(kOrange);
+	  hEvents_Acc_4fold[m]->SetLineColor(890);
+
+	  hEvents_Acc_2fold[m]->SetFillColor(kMagenta);
+	  hEvents_Acc_3fold_p[m]->SetFillColor(kRed);
+	  hEvents_Acc_3fold_e[m]->SetFillColor(kOrange);
+	  hEvents_Acc_4fold[m]->SetFillColor(890);
+
+	  tEvents_Acc_2fold[m]->SetLineColor(kMagenta);
+	  tEvents_Acc_3fold_p[m]->SetLineColor(kRed);
+	  tEvents_Acc_3fold_e[m]->SetLineColor(kOrange);
+	  tEvents_Acc_4fold[m]->SetLineColor(890);
+
+	  tEvents_Acc_2fold[m]->SetLineWidth(2);
+	  tEvents_Acc_3fold_p[m]->SetLineWidth(2);
+	  tEvents_Acc_3fold_e[m]->SetLineWidth(2);
+	  tEvents_Acc_4fold[m]->SetLineWidth(2);
+	}
+      tIn[m]->Draw(Form("Eg_true>>hEvents%d",m),"weight_total * time * lumi / Nsim","goff");
+      tIn[m]->Draw(Form("Eg_true>>hEvents_Acc_2fold%d",m),"weight_total * time * lumi / Nsim * is_accept_ePlusOut * is_accept_eMinusOut","goff");
+      tIn[m]->Draw(Form("Eg_true>>hEvents_Acc_3fold_p%d",m),"weight_total * time * lumi / Nsim * is_accept_ePlusOut * is_accept_eMinusOut * is_accept_pOut","goff");
+      if(m==1)
+	{
+	  tIn[m]->Draw(Form("Eg_true>>hEvents_Acc_3fold_e%d",m),"weight_total * time * lumi / Nsim * is_accept_ePlusOut * is_accept_eMinusOut * is_accept_eOut","goff");
+	  tIn[m]->Draw(Form("Eg_true>>hEvents_Acc_4fold%d",m),"weight_total * time * lumi / Nsim * is_accept_ePlusOut * is_accept_eMinusOut * is_accept_pOut * is_accept_eOut","goff");
+	}
+      
+      for(int i = 1; i<=N ; i++)
+	{
+	  hEvents[m]->SetBinError(i,sqrt(hEvents[m]->GetBinContent(i)));
+	  hEvents_Acc_2fold[m]->SetBinError(i,sqrt(hEvents_Acc_2fold[m]->GetBinContent(i)));
+	  hEvents_Acc_3fold_p[m]->SetBinError(i,sqrt(hEvents_Acc_3fold_p[m]->GetBinContent(i)));
+	  if(m==1)
+	    {
+	      hEvents_Acc_3fold_e[m]->SetBinError(i,sqrt(hEvents_Acc_3fold_e[m]->GetBinContent(i)));
+	      hEvents_Acc_4fold[m]->SetBinError(i,sqrt(hEvents_Acc_4fold[m]->GetBinContent(i)));
+	    }
+	}
+      hEvents_Acc_2fold[m]->Divide(hEvents[m]);
+      hEvents_Acc_3fold_p[m]->Divide(hEvents[m]);
+      if(m==1)
+	{
+	  hEvents_Acc_3fold_e[m]->Divide(hEvents[m]);
+	  hEvents_Acc_4fold[m]->Divide(hEvents[m]);
+	}
+      for(int i = 1; i<=N ; i++)
+	{
+	  if(hEvents[m]->GetBinContent(i)>0) tEvents[m]->SetPoint(tEvents[m]->GetN(),hEvents[m]->GetBinCenter(i),hEvents[m]->GetBinContent(i));
+	  if(hEvents_Acc_2fold[m]->GetBinContent(i)>0) tEvents_Acc_2fold[m]->SetPoint(tEvents_Acc_2fold[m]->GetN(),hEvents_Acc_2fold[m]->GetBinCenter(i),hEvents_Acc_2fold[m]->GetBinContent(i));
+	  if(hEvents_Acc_3fold_p[m]->GetBinContent(i)>0) tEvents_Acc_3fold_p[m]->SetPoint(tEvents_Acc_3fold_p[m]->GetN(),hEvents_Acc_3fold_p[m]->GetBinCenter(i),hEvents_Acc_3fold_p[m]->GetBinContent(i));
+	  if(m==1)
+	    {
+	      if(hEvents_Acc_3fold_e[m]->GetBinContent(i)>0) tEvents_Acc_3fold_e[m]->SetPoint(tEvents_Acc_3fold_e[m]->GetN(),hEvents_Acc_3fold_e[m]->GetBinCenter(i),hEvents_Acc_3fold_e[m]->GetBinContent(i));
+	      if(hEvents_Acc_4fold[m]->GetBinContent(i)>0) tEvents_Acc_4fold[m]->SetPoint(tEvents_Acc_4fold[m]->GetN(),hEvents_Acc_4fold[m]->GetBinCenter(i),hEvents_Acc_4fold[m]->GetBinContent(i));
+	    }
+	}
+      c[m] = new TCanvas(Form("c%d",m),"c",800,600);
+      c[m]->SetHighLightColor(0);
+      gPad->SetLogy();
+      hEvents_Acc_2fold[m]->Draw("E5");
+      hEvents_Acc_2fold[m]->SetTitle("; E_{#gamma} [GeV] ; Efficiency");
+      hEvents_Acc_2fold[m]->GetYaxis()->SetRangeUser(0.0001,9);
+      line[m] = new TLine();
+      line[m]->SetLineStyle(9);
+      line[m]->SetLineColor(923);
+      line[m]->SetLineWidth(2);
+      line[m]->DrawLine(8.2,0.0001,8.2,1);
+      hEvents_Acc_2fold[m]->GetXaxis()->SetLimits(Emin,Emax);
+      hEvents_Acc_3fold_p[m]->Draw("E5 same");
+
+      if(m==0)
+	{
+	  legend[m]=new TLegend(0.5589,0.27748,0.918546,0.401);
+	  latex.DrawLatexNDC(0.16,0.85,Form("#bf{SoLID Simulation} e + %s #bf{#color[4]{photoproduction}} of J/#psi(e^{-}e^{+})", nuc.Data()));
+	  latex.DrawLatexNDC(0.16,0.805,Form("50 days at 1.2e37cm^{-2}s^{-1} | %.1f GeV Beam", beamE));
+	}
+      else if(m==1)
+	{
+	  legend[m]=new TLegend(0.5325,0.157,0.772,0.33);
+	  latex.DrawLatexNDC(0.16,0.85,Form("#bf{SoLID Simulation} e + %s #bf{#color[2]{electroproduction}} of J/#psi(e^{-}e^{+})", nuc.Data()));
+	  latex.DrawLatexNDC(0.16,0.805,Form("50 days at 1.2e37cm^{-2}s^{-1} | %.1f GeV Beam", beamE));
+	}
+      legend[m]->AddEntry(hEvents_Acc_2fold[m],"2-fold (e^{-}e^{+})","f");
+      legend[m]->AddEntry(hEvents_Acc_3fold_p[m],"3-fold p'(e^{-}e^{+})","f");
+      if(m==1)
+	{
+	  hEvents_Acc_3fold_e[m]->Draw("E5 same");
+	  hEvents_Acc_4fold[m]->Draw("E5 same");
+	  tEvents_Acc_3fold_e[m]->Draw("L same");
+	  tEvents_Acc_4fold[m]->Draw("L same");
+	  legend[m]->AddEntry(hEvents_Acc_3fold_e[m],"3-fold e'(e^{-}e^{+})","f");
+	  legend[m]->AddEntry(hEvents_Acc_4fold[m],"4-fold e'p'(e^{-}e^{+})","f");
+	}
+      tEvents_Acc_3fold_p[m]->Draw("L same");
+      tEvents_Acc_2fold[m]->Draw("L same");
+      legend[m]->SetTextFont(42);
+      legend[m]->Draw("same");
+    }
+
+
+  
+  
+  return 0;
+}
