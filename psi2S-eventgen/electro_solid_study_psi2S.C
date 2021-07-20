@@ -58,7 +58,7 @@ double CalcEg(const TLorentzVector P){
   double Eg = (pow(P.E() - Md, 2) - pow(P.P(), 2) - Mn * Mn) / (2.0 * (P.E() - P.Pz() - Md));
   return Eg;
 }
-int electro_solid_study_psi2S(double Ebeam = 17.2, bool do_deuterium = false, Long64_t Nsim = 100000000, TString output_dir = ""){
+int electro_solid_study_psi2S(double Ebeam = 17.2, bool do_deuterium = false, Long64_t Nsim = 100000, TString output_dir = ""){
 
   
   TString stringA;
@@ -163,9 +163,9 @@ int electro_solid_study_psi2S(double Ebeam = 17.2, bool do_deuterium = false, Lo
   // Add TTree Branches
   tree->Branch("event", &myEvent.x,
 	       "x/D:y/D:Q2/D:W/D:W2/D:t/D:x_true/D:y_true/D:Q2_true/D:W_true/D:W2_true/D:t_true/D:tmin/D:tmax/D");
-  /* tree->Branch("eIn","TLorentzVector",&eIn);
+  /*tree->Branch("eIn","TLorentzVector",&eIn);
   tree->Branch("pIn","TLorentzVector",&pIn);
-  tree->Branch("eOut","TLorentzVector",&eOut);
+  tree->Branch("eOut","TLorentzVector",&eOut);/*
   tree->Branch("pOut","TLorentzVector",&pOut);
   tree->Branch("ePlusOut","TLorentzVector",&ePlusOut);
   tree->Branch("eMinusOut","TLorentzVector",&eMinusOut);
@@ -224,23 +224,12 @@ int electro_solid_study_psi2S(double Ebeam = 17.2, bool do_deuterium = false, Lo
       myEvent.W2_true = (ki[1] + q) * (ki[1] + q);
       myEvent.t_true = (ki[1] - kf[1]) * (ki[1] - kf[1]);
 
+      //  eOut = (TLorentzVector*)kf[0].Clone();
 
-      eIn=(TLorentzVector*)ki[0].Clone();
-      pIn=(TLorentzVector*)ki[1].Clone();
-      eOut=(TLorentzVector*)kf[0].Clone();
-      pOut=(TLorentzVector*)kf[1].Clone();
-      ePlusOut=(TLorentzVector*)kf[2].Clone();
-      eMinusOut=(TLorentzVector*)kf[3].Clone();
       _eOutSmear=kf[0];
       _pOutSmear=kf[1];
       _ePlusOutSmear=kf[2];
       _eMinusOutSmear=kf[3];
-
-      eOutSmear=(TLorentzVector*)_eOutSmear.Clone();
-      pOutSmear=(TLorentzVector*)_pOutSmear.Clone();
-      ePlusOutSmear=(TLorentzVector*)_ePlusOutSmear.Clone();
-      eMinusOutSmear=(TLorentzVector*)_eMinusOutSmear.Clone();
-
      
       // Grab all event weights
       weight_jacobian = GENERATE::WEIGHT_JACOBIAN;
@@ -276,7 +265,7 @@ int electro_solid_study_psi2S(double Ebeam = 17.2, bool do_deuterium = false, Lo
       myEvent.tmax = tmax(myEvent.W_true, myEvent.Q2_true);
 
       tree->Fill();
-      
+
     }
   }
 

@@ -191,6 +191,9 @@ int plot_efficiency()
       tEvents_Acc_2fold[m]->Draw("L same");
       legend[m]->SetTextFont(42);
       legend[m]->Draw("same");
+
+      c[m]->SaveAs(Form("PLOTS_EFFICIENCY/%s_%s_%.0f_GeV.pdf",nuc.Data(),production.Data(),beamE));
+      c[m]->SaveAs(Form("PLOTS_EFFICIENCY/%s_%s_%.0f_GeV.eps",nuc.Data(),production.Data(),beamE));
     }
 
 

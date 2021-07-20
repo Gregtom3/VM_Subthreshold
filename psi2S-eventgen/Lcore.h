@@ -628,7 +628,7 @@ namespace DETECTOR{
       acc_Km_clas = (TH3F *) facc_clas->Get("acceptance_PThetaPhi_pim");//!!!!
     }
     else if (strcmp(detector, "SoLID") == 0){
-      facc_solid = new TFile("acceptance/acceptance_solid_JPsi_electron_target315_output.root", "r");
+      facc_solid = new TFile("acceptance/acceptance_solid_JPsi_electron_target315_1e7_output_final.root", "r");
       acc_ele_solid = (TH2D *) facc_solid->Get("acceptance_ThetaP_overall");
       acc_pos_solid = (TH2D *) facc_solid->Get("acceptance_ThetaP_overall");
       acc_proton_solid = (TH2D *) facc_solid->Get("acceptance_ThetaP_overall");

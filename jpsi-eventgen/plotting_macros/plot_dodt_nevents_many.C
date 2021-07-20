@@ -41,7 +41,7 @@ int plot_dodt_nevents_many(int A = 2, double beamE = 11, double Elower = 7, doub
   TStyle *myStyle = new TStyle("Style","My Style");
   myStyle->SetOptStat(0);
   myStyle->SetNdivisions(505);
-  myStyle->SetHistLineWidth(2);
+  myStyle->SetHistLineWidth(1);
   myStyle->SetPadGridY(true);
   myStyle->SetOptLogy();
   myStyle->SetTitleXSize(0.045); 
@@ -51,7 +51,7 @@ int plot_dodt_nevents_many(int A = 2, double beamE = 11, double Elower = 7, doub
   myStyle->SetCanvasColor(0);
   myStyle->SetTitleYOffset(0.92);
   myStyle->SetPadRightMargin(0.05);
-  myStyle->SetHistLineWidth(2);
+  myStyle->SetHistLineWidth(1);
   gROOT->SetStyle("Style");
 
   TH1F *h[2][nE[0]];
@@ -81,11 +81,11 @@ int plot_dodt_nevents_many(int A = 2, double beamE = 11, double Elower = 7, doub
 	  hEvents_Acc_3fold_p[m][M] = new TH1F(Form("hEvents_Acc_3fold_p%d%d",m,M),"; |t| [GeV^{2}]; Events Detected",N[m],tmin,tmax);
 	  hEvents_Acc_3fold_e[m][M] = new TH1F(Form("hEvents_Acc_3fold_e%d%d",m,M),"; |t| [GeV^{2}]; Events Detected",N[m],tmin,tmax);
 	  tge[m][M] = new TGraphErrors(N[m]);
-	  tge[m][M]->SetLineWidth(2);  tge[m][M]->SetLineColor(colors[m]); tge[m][M]->SetMarkerStyle(20); tge[m][M]->SetMarkerColor(colors[m]);
+	  tge[m][M]->SetLineWidth(1);  tge[m][M]->SetLineColor(colors[m]); tge[m][M]->SetMarkerStyle(20); tge[m][M]->SetMarkerColor(colors[m]);
 	  tge[m][M]->SetTitle("; |t| [GeV^{2}] ; d#sigma^{(#gamma+p#rightarrow p'+J/#psi)}/dt [nb / GeV^{2}]");
       
 	  tge_model[m][M] = new TGraphErrors(N[m]);
-	  tge_model[m][M]->SetLineWidth(2);  tge_model[m][M]->SetLineColor(kBlack); tge_model[m][M]->SetLineStyle(9);
+	  tge_model[m][M]->SetLineWidth(1);  tge_model[m][M]->SetLineColor(kBlack); tge_model[m][M]->SetLineStyle(9);
 	  tge_model[m][M]->SetTitle("; |t| [GeV^{2}] ; d#sigma^{(#gamma+p#rightarrow p'+J/#psi)}/dt [nb/GeV^{2}]");
       
 	  tIn[m]->Draw(Form("-event.t>>h%d%d",m,M),Form("weight_dodt * (Eg_true > %f && Eg_true < %f)",Emin,Emax),"goff");
@@ -157,11 +157,11 @@ int plot_dodt_nevents_many(int A = 2, double beamE = 11, double Elower = 7, doub
 	  hEvents_Acc_3fold_p[m][M]->SetLineColor(colors[m]);
 	  hEvents_Acc_3fold_p[m][M]->SetFillColorAlpha(colors[m],0.35);
 	  // hEvents_Acc_3fold_p[m][M]->SetFillStyle(3001);
-	  hEvents_Acc_3fold_p[m][M]->SetLineWidth(2);
+	  hEvents_Acc_3fold_p[m][M]->SetLineWidth(1);
 	  hEvents_Acc_3fold_e[m][M]->SetLineColor(634);
 	  hEvents_Acc_3fold_e[m][M]->SetFillColorAlpha(634,0.35);
 	  //	  hEvents_Acc_3fold_e[m][M]->SetFillStyle(3001);
-	  hEvents_Acc_3fold_e[m][M]->SetLineWidth(2);
+	  hEvents_Acc_3fold_e[m][M]->SetLineWidth(1);
 	  hEvents[m][M]->SetLineColor(kBlack);
 	  hEvents[m][M]->SetFillColorAlpha(kGray+1,0.35);
 	  // hEvents[m][M]->SetFillStyle(3001);
@@ -186,9 +186,9 @@ int plot_dodt_nevents_many(int A = 2, double beamE = 11, double Elower = 7, doub
 	    latex.DrawLatexNDC(0.15,0.86,Form("#bf{SoLID Simulation} e+%s #rightarrow p' + J/#psi(e^{-}e^{+}) + X #bf{#color[4]{photoproduction}}",nuc.Data()));
 	  else if(m==1) // electro
 	    latex.DrawLatexNDC(0.15,0.86,Form("#bf{SoLID Simulation} e+%s #rightarrow p' + J/#psi(e^{-}e^{+}) + X #bf{#color[2]{electroproduction}}",nuc.Data()));
-	  latex.DrawLatexNDC(0.25,0.82,Form("%.1f GeV Beam | 50 days at 1.2e37 cm^{-2}s^{-1}",beamE));
+	  latex.DrawLatexNDC(0.25,0.825,Form("%.1f GeV Beam | 50 days at 1.2e37 cm^{-2}s^{-1}",beamE));
 	  //	  latex.DrawLatexNDC(0.25,0.82,"50 days at 1.2e37 #left(e^{-2}e^{+}#right) + X #bf{#color[2]{electroproduction}}");
-	  latex.DrawLatexNDC(0.25,0.775,Form("%.2f < E_{#gamma} < %.2f",Emin,Emax));
+	  latex.DrawLatexNDC(0.25,0.782,Form("%.2f < E_{#gamma} < %.2f",Emin,Emax));
 
 	  //	  c[m][M]->SaveAs(Form("PLOTS_DODT_NEVENTS_MANY/%s_%.0f/%s_%s_%.1f_GeV_beam_%.2f_Egamma_%.2f.png",nuc.Data(),beamE,nuc.Data(),production[m].Data(),beamE,Emin,Emax));
 	  c[m][M]->SaveAs(Form("PLOTS_DODT_NEVENTS_MANY/%s_%.0f/%s_%s_%.1f_GeV_beam_%.2f_Egamma_%.2f.pdf",nuc.Data(),beamE,nuc.Data(),production[m].Data(),beamE,Emin,Emax));

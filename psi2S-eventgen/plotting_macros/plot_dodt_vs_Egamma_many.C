@@ -6,8 +6,8 @@ double psi2S_dodt_23g(double * xx, double * p)
 {
   double X = x(xx[0]);
   double t = xx[1];
-  double N2g = 1818.89;
-  double N3g = 809.949;
+  double N2g = 1569.43;
+  double N3g = 698.868;
   double v = 1.0 / (16.0 * M_PI);
   double R = 1.0;
   double M = 3.686097;//GeV
@@ -23,8 +23,8 @@ double psi2S_o_23g(double * xx, double * p)
   double tmin = tlimits[0];
   double tmax = tlimits[1];
 
-  double N2g = 1818.89;
-  double N3g = 809.949;
+  double N2g = 1569.43;
+  double N3g = 698.868;
   double v = 1.0 / (16.0 * M_PI);
   double R = 1.0;
   double M = 3.686097;//GeV
@@ -124,9 +124,18 @@ int plot_dodt_vs_Egamma_many()
   
   // ************************************************************* //
 
-  TF1 *fit_photo = new TF1("fit_photo","expo",0,100);
-  TF1 *fit_electro = new TF1("fit_electro","expo",0,100);
-  TF1 *fit_total = new TF1("fit_total","expo",0,100);
+  TF1 *fit_photo = new TF1("fit_photo","[0]*exp([1]*x)",0,100);
+  TF1 *fit_electro = new TF1("fit_electro","[0]*exp([1]*x)",0,100);
+  TF1 *fit_total = new TF1("fit_total","[0]*exp([1]*x)",0,100);
+
+
+  fit_photo->SetLineStyle(2);
+  fit_electro->SetLineStyle(2);
+  fit_total->SetLineStyle(2);
+
+  fit_photo->SetLineWidth(1);
+  fit_electro->SetLineWidth(1);
+  fit_total->SetLineWidth(1);
 
   // ************************************************************* //
 
@@ -193,6 +202,14 @@ int plot_dodt_vs_Egamma_many()
 
       // ************************************************************* //
 
+      fit_photo->SetParameters(0.05,-1.13);
+      fit_electro->SetParameters(0.05,-1.13);
+      fit_total->SetParameters(0.05,-1.13);
+      
+      fit_photo->SetParLimits(0,0.0001,5);
+      fit_electro->SetParLimits(0,0.0001,5);
+      fit_total->SetParLimits(0,0.0001,5);
+
       TFitResultPtr photo_r = tge[0][j]->Fit(fit_photo,"RNQS");
       TFitResultPtr electro_r = tge[1][j]->Fit(fit_electro,"RNQS");
       TFitResultPtr total_r = tge[2][j]->Fit(fit_total,"RNQS");
@@ -237,6 +254,8 @@ int plot_dodt_vs_Egamma_many()
       double text_step = 0.05;
       c0[j] = new TCanvas(Form("c0%d",j),Form("c0%d",j),800,600);
       tge[0][j]->Draw("AP");
+      fit_photo->Draw("C same");
+      tge[0][j]->Draw("P same");
       tge[0][j]->GetXaxis()->SetLimits(xmin,xmax);
       tge[0][j]->GetYaxis()->SetRangeUser(0.00001,1);
       latex.DrawLatexNDC(text_left,text_top,Form("#bf{SoLID} Simulation (%.1f GeV beam)",eIn_E));
@@ -248,6 +267,8 @@ int plot_dodt_vs_Egamma_many()
       
       c1[j] = new TCanvas(Form("c1%d",j),Form("c1%d",j),800,600);
       tge[1][j]->Draw("AP");
+      fit_electro->Draw("C same");
+      tge[1][j]->Draw("P same");
       tge[1][j]->GetXaxis()->SetLimits(xmin,xmax);
       tge[1][j]->GetYaxis()->SetRangeUser(0.00001,1);
       latex.DrawLatexNDC(text_left,text_top,Form("#bf{SoLID} Simulation (%.1f GeV beam)",eIn_E));
@@ -259,6 +280,8 @@ int plot_dodt_vs_Egamma_many()
 
       c2[j] = new TCanvas(Form("c2%d",j),Form("c2%d",j),800,600);
       tge[2][j]->Draw("AP");
+      fit_total->Draw("C same");
+      tge[2][j]->Draw("P same");
       tge[2][j]->GetXaxis()->SetLimits(xmin,xmax);
       tge[2][j]->GetYaxis()->SetRangeUser(0.00001,1);
       latex.DrawLatexNDC(text_left,text_top,Form("#bf{SoLID} Simulation (%.1f GeV beam)",eIn_E));

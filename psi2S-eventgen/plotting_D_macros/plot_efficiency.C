@@ -18,7 +18,7 @@ int plot_efficiency()
   production[1]="electroproduction";
 
   fIn[0] = new TFile(Form("../data/%s-photo-5000000-%.0f/%s_solid_photo_%.1fGeV.root",nuc.Data(),beamE,nuc.Data(),beamE),"READ");
-  fIn[1] = new TFile(Form("../data/%s-electro-100000000-%.0f/%s_solid_electro_%.1fGeV.root",nuc.Data(),beamE,nuc.Data(),beamE),"READ");
+  fIn[1] = new TFile(Form("../data/%s-electro-1000000000-%.0f/%s_solid_electro_%.1fGeV.root",nuc.Data(),beamE,nuc.Data(),beamE),"READ");
   TTree *tIn[2];
   tIn[0] = (TTree*)fIn[0]->Get("tree");
   tIn[1] = (TTree*)fIn[1]->Get("tree");

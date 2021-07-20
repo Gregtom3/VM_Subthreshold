@@ -218,18 +218,10 @@ int photo_solid_study_psi2S(double Ebeam = 17.2, bool do_deuterium = false,  Lon
       myEvent.W2_true = (ki[1] + q) * (ki[1] + q);
       myEvent.t_true = (ki[1] - kf[0]) * (ki[1] - kf[0]);
 
-      eIn=(TLorentzVector*)ki[0].Clone();
-      pIn=(TLorentzVector*)ki[1].Clone();
-      pOut=(TLorentzVector*)kf[0].Clone();
-      ePlusOut=(TLorentzVector*)kf[1].Clone();
-      eMinusOut=(TLorentzVector*)kf[2].Clone();
       _pOutSmear=kf[0];
       _ePlusOutSmear=kf[1];
       _eMinusOutSmear=kf[2];
 
-      pOutSmear=(TLorentzVector*)_pOutSmear.Clone();
-      ePlusOutSmear=(TLorentzVector*)_ePlusOutSmear.Clone();
-      eMinusOutSmear=(TLorentzVector*)_eMinusOutSmear.Clone();
 
        // Grab all event weights
       weight_jacobian = GENERATE::WEIGHT_JACOBIAN;
